@@ -1,7 +1,7 @@
 (() => {
   const STORAGE_KEY='sobra.transactions.v1';
   const THEME_KEY='sobra.theme.v1';
-  const SOBRA_VERSION='0.2.0';
+  const SOBRA_VERSION='0.2.1';
   const SOBRA_RELEASE_ID=document.querySelector('meta[name="sobra-release"]')?.content||'development';
   const RELEASE_CHECK_MS=120000;
   const RELEASE_MIN_CHECK_MS=20000;
