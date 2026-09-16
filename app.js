@@ -1,7 +1,7 @@
 (() => {
   const STORAGE_KEY='sobra.transactions.v1';
   const THEME_KEY='sobra.theme.v1';
-  const SOBRA_VERSION='0.2.1';
+  const SOBRA_VERSION='0.3.0';
   const SOBRA_RELEASE_ID=document.querySelector('meta[name="sobra-release"]')?.content||'development';
   const RELEASE_CHECK_MS=120000;
   const RELEASE_MIN_CHECK_MS=20000;
@@ -166,7 +166,7 @@
     let txs=monthTransactions();
     if(state.filter==='income')txs=txs.filter(t=>t.type==='income');
     if(state.filter==='expense')txs=txs.filter(t=>t.type==='expense');
-    if(state.statusFilter!=='all')txs=txs.filter(t=>t.type==='expense'&&t.status===state.statusFilter);
+    if(state.statusFilter!=='all'&&state.filter!=='income')txs=txs.filter(t=>t.type==='expense'&&t.status===state.statusFilter);
     if(state.categoryFilter!=='all')txs=txs.filter(t=>t.category===state.categoryFilter);
     const q=state.search.trim().toLowerCase();
     if(q)txs=txs.filter(t=>`${t.description} ${t.category}`.toLowerCase().includes(q));
@@ -174,7 +174,7 @@
   }
 
   function activeSecondaryFilters(){
-    return Number(state.statusFilter!=='all')+Number(state.categoryFilter!=='all');
+    return Number(state.statusFilter!=='all'&&state.filter!=='income')+Number(state.categoryFilter!=='all');
   }
 
   function renderTransactions(){
@@ -473,6 +473,7 @@
       ?'<option value="launched">Lançada</option><option value="scheduled">Agendada</option><option value="paid">Paga</option>'
       :'<option value="expected">Prevista</option><option value="received">Recebida</option>';
     if(category&&state.entryType==='income')category.value='Receitas';
+    if(category&&state.entryType==='expense'&&category.value==='Receitas')category.value='Casa';
     document.querySelectorAll('[data-entry-type]').forEach(b=>b.classList.toggle('active',b.dataset.entryType===state.entryType));
   }
   function updateInstallmentFields(){
