@@ -4,7 +4,7 @@
   const DEMO_DATA_KEY='sobra.demoDataVersion';
   const DEMO_DATA_VERSION='spreadsheet-20260916-v2';
   const THEME_KEY='sobra.theme.v1';
-  const SOBRA_VERSION='0.8.0';
+  const SOBRA_VERSION='0.9.0';
   const SOBRA_RELEASE_ID=document.querySelector('meta[name="sobra-release"]')?.content||'development';
   const RELEASE_CHECK_MS=120000;
   const RELEASE_MIN_CHECK_MS=20000;
@@ -31,7 +31,13 @@
       info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/>',
       chevron:'<path d="m9 18 6-6-6-6"/>',
       sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>',
-      moon:'<path d="M20 15.2A8.5 8.5 0 0 1 8.8 4 8.5 8.5 0 1 0 20 15.2Z"/>'
+      moon:'<path d="M20 15.2A8.5 8.5 0 0 1 8.8 4 8.5 8.5 0 1 0 20 15.2Z"/>',
+      receipt:'<path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Z"/><path d="M9 8h6M9 12h6"/>',
+      clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+      check:'<circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/>',
+      wallet:'<path d="M4 7h14a2 2 0 0 1 2 2v9H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h11v3"/><path d="M16 11h4v4h-4a2 2 0 1 1 0-4Z"/>',
+      plus:'<path d="M12 5v14M5 12h14"/>',
+      calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/>'
     };
     return `<svg class="app-icon" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name]||''}</svg>`;
   }
@@ -316,47 +322,46 @@
     const txs=state.homeStatusFilter==='all'?allTxs:allTxs.filter(t=>t.status===state.homeStatusFilter);
     const filterLabels={all:'Todas',launched:'Lançadas',scheduled:'Agendadas',paid:'Pagas'};
     return `<section class="page home-page">
+      <div class="home-kicker"><span>Visão geral do mês</span></div>
+
       <div class="balance-card">
         ${homeMonthSelector()}
         <div class="balance-main">
-          <p class="balance-label">Vai sobrar</p>
+          <p class="balance-label">Disponível depois das contas</p>
           <h2 class="balance-value">${money.format(s.sobra)}</h2>
-          <span class="balance-caption">depois de todas as contas deste mês</span>
         </div>
         <div class="balance-row">
-          <div class="balance-mini"><small>Entradas</small><strong>${money.format(s.revenue)}</strong></div>
-          <div class="balance-mini"><small>Contas</small><strong>${money.format(s.expensesTotal)}</strong></div>
+          <div class="balance-mini income"><span class="balance-mini-icon">${icon('arrowUp',17)}</span><div><small>Entradas</small><strong>${money.format(s.revenue)}</strong></div></div>
+          <div class="balance-mini expense"><span class="balance-mini-icon">${icon('arrowDown',17)}</span><div><small>Contas</small><strong>${money.format(s.expensesTotal)}</strong></div></div>
         </div>
         <div class="balance-commitment">
           <div class="balance-progress"><span style="width:${s.percentage}%"></span></div>
-          <div class="balance-commitment-copy">
-            <span>${s.percentage.toFixed(0)}% da renda comprometida</span>
-          </div>
+          <div class="balance-commitment-copy"><span>${s.percentage.toFixed(0)}% da renda comprometida</span></div>
         </div>
       </div>
 
       <section class="content-section payment-status-section">
-        <div class="section-head"><h2>Pagamento das contas</h2><span></span></div>
+        <div class="section-head"><div><h2>Pagamento das contas</h2><small>Toque para filtrar</small></div><span></span></div>
         <div class="payment-status-grid" id="homeStatusGrid">
           <button class="payment-status-card launched ${state.homeStatusFilter==='launched'?'active':''}" data-home-status="launched" aria-pressed="${state.homeStatusFilter==='launched'}">
-            <span class="status-dot"></span><small>Lançadas</small><strong>${money.format(s.launched)}</strong>
+            <span class="payment-status-icon">${icon('receipt',18)}</span><small>Lançadas</small><strong>${money.format(s.launched)}</strong>
           </button>
           <button class="payment-status-card scheduled ${state.homeStatusFilter==='scheduled'?'active':''}" data-home-status="scheduled" aria-pressed="${state.homeStatusFilter==='scheduled'}">
-            <span class="status-dot"></span><small>Agendadas</small><strong>${money.format(s.scheduled)}</strong>
+            <span class="payment-status-icon">${icon('clock',18)}</span><small>Agendadas</small><strong>${money.format(s.scheduled)}</strong>
           </button>
           <button class="payment-status-card paid ${state.homeStatusFilter==='paid'?'active':''}" data-home-status="paid" aria-pressed="${state.homeStatusFilter==='paid'}">
-            <span class="status-dot"></span><small>Pagas</small><strong>${money.format(s.paid)}</strong>
+            <span class="payment-status-icon">${icon('check',18)}</span><small>Pagas</small><strong>${money.format(s.paid)}</strong>
           </button>
         </div>
-        <button class="clear-home-filter" id="clearHomeFilter" data-home-status="all" ${state.homeStatusFilter==='all'?'hidden':''}>Mostrar todas as contas</button>
+        <button class="clear-home-filter" id="clearHomeFilter" data-home-status="all" ${state.homeStatusFilter==='all'?'hidden':''}>Mostrar todas</button>
       </section>
 
       <section class="content-section month-control-section">
         <div class="section-head">
-          <h2>Contas do mês</h2>
-          <span class="section-filter-label" id="homeFilterLabel">${filterLabels[state.homeStatusFilter]}</span>
+          <div><h2>Contas do mês</h2><small id="homeFilterLabel">${filterLabels[state.homeStatusFilter]}</small></div>
+          <span></span>
         </div>
-        <div class="list-surface month-control-list" id="homeMonthList">${txs.length?txs.map(monthControlItem).join(''):`<div class="empty-state"><strong>Nenhuma conta ${state.homeStatusFilter==='all'?'neste mês':filterLabels[state.homeStatusFilter].toLowerCase()}</strong>${state.homeStatusFilter==='all'?'Cadastre suas contas na aba Contas.':'Toque em outro status para ver as demais contas.'}</div>`}</div>
+        <div class="list-surface month-control-list" id="homeMonthList">${txs.length?txs.map(monthControlItem).join(''):`<div class="empty-state"><span class="empty-icon">${icon('check',24)}</span><strong>Nenhuma conta ${state.homeStatusFilter==='all'?'neste mês':filterLabels[state.homeStatusFilter].toLowerCase()}</strong><span>${state.homeStatusFilter==='all'?'Cadastre suas contas na aba Contas.':'Escolha outro status para ver as demais contas.'}</span></div>`}</div>
       </section>
     </section>`;
   }
@@ -382,8 +387,8 @@
 
   function renderAccountGroup(title,rows,empty,master=false){
     return `<section class="account-group">
-      <div class="section-head"><h2>${title}</h2><span></span></div>
-      <div class="list-surface account-list">${rows.length?rows.map(t=>accountItem(t,master)).join(''):`<div class="empty-state compact">${empty}</div>`}</div>
+      <div class="section-head"><div><h2>${title}</h2><small>${rows.length} ${rows.length===1?'item':'itens'}</small></div><span></span></div>
+      <div class="list-surface account-list">${rows.length?rows.map(t=>accountItem(t,master)).join(''):`<div class="empty-state compact"><span class="empty-icon">${icon('receipt',22)}</span><strong>${empty}</strong><span>Use o botão acima para cadastrar.</span></div>`}</div>
     </section>`;
   }
 
@@ -400,26 +405,35 @@
     const isExpense=state.accountsTab==='expense';
     const currentMonth=new Date(now.getFullYear(),now.getMonth(),1);
     const monthName=monthFmt.format(currentMonth).split(' de ')[0];
+    const total=sum(currentRows);
     return `<section class="page accounts-page">
+      <header class="screen-head">
+        <div><h1>${isExpense?'Contas':'Proventos'}</h1><p>${isExpense?'Organização e controle dos seus pagamentos':'Entradas que alimentam seu planejamento'}</p></div>
+        <button class="screen-add" data-add-kind="${isExpense?'expense':'income'}" data-add-mode="recurring" aria-label="${isExpense?'Nova conta':'Novo provento'}">${icon('plus',20)}</button>
+      </header>
+
       <div class="account-tabs">
         <button class="${isExpense?'active':''}" data-account-tab="expense">Contas</button>
         <button class="${!isExpense?'active':''}" data-account-tab="income">Proventos</button>
       </div>
-      <div class="accounts-intro permanent">
-        <div class="accounts-intro-copy">
-          <strong>${isExpense?'Seu cadastro de contas':'Seu cadastro de proventos'}</strong>
-          <span>${isExpense?'Cadastre uma vez. As recorrentes entram automaticamente em cada mês.':'Salários e rendas recorrentes aparecem automaticamente nos próximos meses.'}</span>
+
+      <section class="accounts-summary">
+        <div><small>Total deste mês</small><strong>${money.format(total)}</strong></div>
+        <div class="accounts-summary-meta">
+          <span><b>${recurring.length}</b> recorrentes</span>
+          <span><b>${installments.length}</b> parcelados</span>
+          <span><b>${monthly.length}</b> avulsos</span>
         </div>
-        <button class="account-add-action" data-add-kind="${isExpense?'expense':'income'}" data-add-mode="recurring">+ ${isExpense?'Nova conta':'Novo provento'}</button>
-      </div>
-      ${renderAccountGroup('Recorrentes',recurring,isExpense?'Nenhuma conta recorrente cadastrada.':'Nenhum provento recorrente cadastrado.',true)}
+      </section>
+
+      ${renderAccountGroup('Recorrentes',recurring,isExpense?'Nenhuma conta recorrente':'Nenhum provento recorrente',true)}
       ${installments.length?renderAccountGroup('Parcelados',installments,'',false):''}
       <section class="account-group">
         <div class="section-head">
-          <h2>Avulsos de ${monthName}</h2>
-          <button data-add-kind="${isExpense?'expense':'income'}" data-add-mode="single">+ Avulso</button>
+          <div><h2>Avulsos de ${monthName}</h2><small>${monthly.length} ${monthly.length===1?'item':'itens'}</small></div>
+          <button class="section-add" data-add-kind="${isExpense?'expense':'income'}" data-add-mode="single">+ Avulso</button>
         </div>
-        <div class="list-surface account-list">${monthly.length?monthly.map(t=>accountItem(t,false)).join(''):`<div class="empty-state compact">${isExpense?'Nenhuma conta avulsa neste mês.':'Nenhum provento avulso neste mês.'}</div>`}</div>
+        <div class="list-surface account-list">${monthly.length?monthly.map(t=>accountItem(t,false)).join(''):`<div class="empty-state compact"><span class="empty-icon">${icon('receipt',22)}</span><strong>${isExpense?'Nenhuma conta avulsa':'Nenhum provento avulso'}</strong><span>Adicione apenas o que acontece neste mês.</span></div>`}</div>
       </section>
     </section>`;
   }
@@ -501,54 +515,61 @@
       const today=date===todayKey;
       cells.push(`<button class="calendar-cell ${selected?'selected':''} ${today?'today':''}" data-calendar-date="${date}" aria-label="${day} de ${monthFmt.format(state.selectedMonth)}">
         <span class="calendar-number">${day}</span>
-        <span class="calendar-dots">
-          ${hasIncome?'<i class="calendar-dot income"></i>':''}
-          ${hasExpense?'<i class="calendar-dot expense"></i>':''}
-        </span>
+        <span class="calendar-dots">${hasIncome?'<i class="calendar-dot income"></i>':''}${hasExpense?'<i class="calendar-dot expense"></i>':''}</span>
       </button>`);
     }
 
     const selectedTxs=groups[state.calendarDate]||[];
     const selectedDate=new Date(`${state.calendarDate}T12:00:00`);
     const selectedLabel=selectedDate.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'});
+    const dayIncome=sum(selectedTxs.filter(t=>t.type==='income'));
+    const dayExpense=sum(selectedTxs.filter(t=>t.type==='expense'));
     const selectedList=selectedTxs.length
       ? selectedTxs.map(txItem).join('')
-      : '<div class="empty-state compact"><strong>Nenhuma movimentação</strong>Não há contas ou proventos neste dia.</div>';
+      : `<div class="empty-state compact"><span class="empty-icon">${icon('calendar',22)}</span><strong>Nada previsto para este dia</strong><span>Escolha outro dia no calendário.</span></div>`;
 
-    return `<section class="page">
+    return `<section class="page calendar-page">
+      <header class="screen-head"><div><h1>Calendário</h1><p>Vencimentos e recebimentos</p></div></header>
       ${monthSwitcher()}
       <div class="calendar-card">
-        <div class="calendar-weekdays">
-          ${['D','S','T','Q','Q','S','S'].map(d=>`<span>${d}</span>`).join('')}
-        </div>
+        <div class="calendar-weekdays">${['D','S','T','Q','Q','S','S'].map(d=>`<span>${d}</span>`).join('')}</div>
         <div class="calendar-grid">${cells.join('')}</div>
-        <div class="calendar-legend">
-          <span><i class="calendar-dot income"></i> Entradas</span>
-          <span><i class="calendar-dot expense"></i> Saídas</span>
-        </div>
       </div>
-      <div class="section-card calendar-selected">
-        <div class="section-head"><h2>${selectedLabel}</h2><span></span></div>
+
+      <section class="selected-day-card">
+        <div class="section-head"><div><h2>${selectedLabel}</h2><small>${selectedTxs.length} ${selectedTxs.length===1?'movimentação':'movimentações'}</small></div><span></span></div>
+        ${selectedTxs.length?`<div class="day-summary">
+          <span><i class="income"></i>Entradas <strong>${money.format(dayIncome)}</strong></span>
+          <span><i class="expense"></i>Contas <strong>${money.format(dayExpense)}</strong></span>
+        </div>`:''}
         <div class="transaction-list">${selectedList}</div>
-      </div>
+      </section>
     </section>`;
   }
 
   function renderMore(){
-    const rows=[
-      ['tag','Categorias','Organize suas contas e proventos','categories'],
-      ['palette','Aparência','Tema e preferências visuais','appearance'],
-      ['data','Dados e backup','Gerencie os dados do aplicativo','data'],
-      ['sliders','Preferências','Comportamento do Sobra','preferences'],
-      ['info','Sobre o Sobra',`Versão ${SOBRA_VERSION}`,'about']
+    const groups=[
+      ['Organização',[
+        ['tag','Categorias','Organize suas contas e proventos','categories'],
+        ['sliders','Preferências','Comportamento do Sobra','preferences']
+      ]],
+      ['Aplicativo',[
+        ['palette','Aparência','Tema e preferências visuais','appearance'],
+        ['data','Dados e backup','Gerencie os dados do aplicativo','data'],
+        ['info','Sobre o Sobra',`Versão ${SOBRA_VERSION}`,'about']
+      ]]
     ];
-    return `<section class="page">
-      <div class="settings-list">${rows.map(([ico,title,subtitle,action])=>`
-        <button class="settings-row" data-more-action="${action}">
-          <span class="settings-icon">${icon(ico,20)}</span>
-          <span class="settings-copy"><strong>${title}</strong><small>${subtitle}</small></span>
-          <span class="settings-chevron">${icon('chevron',18)}</span>
-        </button>`).join('')}</div>
+    return `<section class="page more-page">
+      <header class="screen-head"><div><h1>Mais</h1><p>Preferências e dados do aplicativo</p></div></header>
+      ${groups.map(([title,rows])=>`<section class="settings-group">
+        <h2>${title}</h2>
+        <div class="settings-list">${rows.map(([ico,label,subtitle,action])=>`
+          <button class="settings-row" data-more-action="${action}">
+            <span class="settings-icon">${icon(ico,19)}</span>
+            <span class="settings-copy"><strong>${label}</strong><small>${subtitle}</small></span>
+            <span class="settings-chevron">${icon('chevron',17)}</span>
+          </button>`).join('')}</div>
+      </section>`).join('')}
     </section>`;
   }
 
@@ -878,25 +899,35 @@
     const t=viewTransaction(id);if(!t)return;
     if(t._sourceId&&t.mode==='recurring'){
       openModal(
-        `Excluir ${t.type==='expense'?'conta':'provento'} recorrente`,
+        `Excluir ${t.type==='expense'?'conta':'provento'} recorrente?`,
         escapeHtml(t.description),
-        '<div class="info-stack"><p>Escolha se deseja remover apenas este mês ou encerrar a recorrência a partir deste mês.</p></div>',
-        `<button class="btn btn-secondary" data-skip-occurrence="${t.id}">Só este mês</button><button class="btn btn-primary" data-end-recurrence="${t.id}">Deste mês em diante</button>`
+        '<div class="confirm-state"><span class="confirm-icon">'+icon('receipt',24)+'</span><p>Escolha o alcance da exclusão. Essa ação altera seu planejamento.</p></div>',
+        `<button class="btn btn-secondary" data-skip-occurrence="${t.id}">Só este mês</button><button class="btn btn-danger" data-end-recurrence="${t.id}">Deste mês em diante</button>`
       );
       return;
     }
     if(t._sourceId&&t.mode==='installment'){
       openModal(
-        'Excluir parcela',
+        'Excluir parcela?',
         escapeHtml(t.description),
-        '<div class="info-stack"><p>Você pode remover somente esta parcela ou excluir todo o parcelamento.</p></div>',
-        `<button class="btn btn-secondary" data-skip-occurrence="${t.id}">Só esta parcela</button><button class="btn btn-primary" data-delete-series="${t._sourceId}">Parcelamento inteiro</button>`
+        '<div class="confirm-state"><span class="confirm-icon">'+icon('receipt',24)+'</span><p>Você pode remover só esta parcela ou todo o parcelamento.</p></div>',
+        `<button class="btn btn-secondary" data-skip-occurrence="${t.id}">Só esta parcela</button><button class="btn btn-danger" data-delete-series="${t._sourceId}">Parcelamento inteiro</button>`
       );
       return;
     }
+    openModal(
+      `Excluir ${t.type==='expense'?'conta':'provento'}?`,
+      escapeHtml(t.description),
+      '<div class="confirm-state danger"><span class="confirm-icon">'+icon('receipt',24)+'</span><p>Essa ação não poderá ser desfeita.</p></div>',
+      `<button class="btn btn-secondary" data-close-modal>Cancelar</button><button class="btn btn-danger" data-confirm-delete="${t.id}">Excluir</button>`
+    );
+  }
+  function confirmDeleteTx(id){
+    const t=state.transactions.find(x=>x.id===id);if(!t)return;
     state.transactions=state.transactions.filter(x=>x.id!==id);
     persist();closeModal();render();showToast(t.type==='expense'?'Conta excluída.':'Provento excluído.');
   }
+
   function deleteSeries(id){
     state.transactions=state.transactions.filter(x=>x.id!==id);
     for(const key of Object.keys(state.overrides)){
@@ -976,6 +1007,7 @@
     const saveOccurrence=e.target.closest('[data-save-occurrence]');if(saveOccurrence){saveOccurrenceValue(saveOccurrence.dataset.saveOccurrence);return}
     const setStatus=e.target.closest('[data-set-status]');if(setStatus){updateTxStatus(setStatus.dataset.setStatus,setStatus.dataset.status);return}
     const del=e.target.closest('[data-delete-tx]');if(del){deleteTx(del.dataset.deleteTx);return}
+    const confirmDelete=e.target.closest('[data-confirm-delete]');if(confirmDelete){confirmDeleteTx(confirmDelete.dataset.confirmDelete);return}
     const skip=e.target.closest('[data-skip-occurrence]');if(skip){skipOccurrence(skip.dataset.skipOccurrence);return}
     const delSeries=e.target.closest('[data-delete-series]');if(delSeries){deleteSeries(delSeries.dataset.deleteSeries);return}
     const endRec=e.target.closest('[data-end-recurrence]');if(endRec){endRecurrence(endRec.dataset.endRecurrence);return}
