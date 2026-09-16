@@ -756,7 +756,7 @@
   }
   function deleteTx(id){
     const t=viewTransaction(id);if(!t)return;
-    if(t._sourceId){
+    if(t._sourceId&&t.mode==='recurring'){
       openModal(
         `Excluir ${t.type==='expense'?'conta':'provento'} recorrente`,
         escapeHtml(t.description),
@@ -765,8 +765,24 @@
       );
       return;
     }
+    if(t._sourceId&&t.mode==='installment'){
+      openModal(
+        'Excluir parcela',
+        escapeHtml(t.description),
+        '<div class="info-stack"><p>Você pode remover somente esta parcela ou excluir todo o parcelamento.</p></div>',
+        `<button class="btn btn-secondary" data-skip-occurrence="${t.id}">Só esta parcela</button><button class="btn btn-primary" data-delete-series="${t._sourceId}">Parcelamento inteiro</button>`
+      );
+      return;
+    }
     state.transactions=state.transactions.filter(x=>x.id!==id);
     persist();closeModal();render();showToast(t.type==='expense'?'Conta excluída.':'Provento excluído.');
+  }
+  function deleteSeries(id){
+    state.transactions=state.transactions.filter(x=>x.id!==id);
+    for(const key of Object.keys(state.overrides)){
+      if(key.startsWith(`${id}:`))delete state.overrides[key];
+    }
+    persist();closeModal();render();showToast('Parcelamento excluído.');
   }
   function skipOccurrence(id){
     const t=viewTransaction(id);if(!t?._sourceId)return;
@@ -841,6 +857,7 @@
     const scheduled=e.target.closest('[data-mark-scheduled]');if(scheduled){updateTxStatus(scheduled.dataset.markScheduled,'scheduled');return}
     const del=e.target.closest('[data-delete-tx]');if(del){deleteTx(del.dataset.deleteTx);return}
     const skip=e.target.closest('[data-skip-occurrence]');if(skip){skipOccurrence(skip.dataset.skipOccurrence);return}
+    const delSeries=e.target.closest('[data-delete-series]');if(delSeries){deleteSeries(delSeries.dataset.deleteSeries);return}
     const endRec=e.target.closest('[data-end-recurrence]');if(endRec){endRecurrence(endRec.dataset.endRecurrence);return}
     const dup=e.target.closest('[data-duplicate-tx]');if(dup){duplicateTx(dup.dataset.duplicateTx);return}
     if(e.target.closest('[data-apply-update]')){applyReleaseUpdate();return}
