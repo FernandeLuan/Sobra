@@ -261,7 +261,7 @@
     return `${escapeHtml(t.category)} · ${date}${installment}`;
   }
   function txItem(t){
-    const sign=t.type==='income'?'+':'−';
+    const sign=t.type==='income'?'+':'';
     const tone=t.type==='income'?'income':'expense';
     return `<button class="transaction-item" data-open-tx="${t.id}">
       <span class="tx-icon ${tone}">${icon(t.type==='income'?'arrowUp':'arrowDown',18)}</span>
