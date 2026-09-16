@@ -553,7 +553,7 @@
       `<div class="update-notice">
         <div class="update-notice-icon">↻</div>
         <p><strong>O Sobra recebeu uma atualização.</strong></p>
-        <p>Atualize para carregar as melhorias mais recentes. Seus lançamentos salvos neste navegador serão mantidos.</p>
+        <p>Atualize para carregar as melhorias mais recentes. Suas contas e seus proventos salvos neste navegador serão mantidos.</p>
         <div class="update-version-row">
           <span>Versão atual <strong>${escapeHtml(SOBRA_VERSION)}</strong></span>
           <span>Nova versão <strong>${escapeHtml(latestRelease.version||latestRelease.release)}</strong></span>
@@ -832,7 +832,7 @@
   function duplicateTx(id){
     const t=state.transactions.find(x=>x.id===id);if(!t)return;
     state.transactions.push({...t,id:uid(),description:`${t.description} — cópia`});
-    persist();closeModal();render();showToast('Lançamento duplicado.');
+    persist();closeModal();render();showToast('Item duplicado.');
   }
   function showToast(message){
     const root=document.getElementById('toastRoot');
