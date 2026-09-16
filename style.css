@@ -389,3 +389,70 @@ body.dark .fab{border-color:var(--bg)}
   color:var(--muted);font-size:.52rem
 }
 .update-version-row strong{display:block;margin-top:3px;color:var(--text);font-size:.62rem}
+
+
+/* Tipografia legível — ajuste mobile-first 0.2.1 */
+body{font-size:16px}
+.brand-copy strong{font-size:1.04rem}
+.brand-copy small{font-size:.78rem}
+.balance-label{font-size:.82rem}
+.balance-caption{font-size:.8rem;line-height:1.4}
+.balance-mini small{font-size:.72rem}
+.balance-mini strong{font-size:.95rem}
+.month-label{font-size:.94rem}
+.section-head h2{font-size:1rem}
+.section-head button{font-size:.8rem}
+.progress-copy{font-size:.76rem;line-height:1.35}
+.status-card small{font-size:.7rem}
+.status-card strong{font-size:.9rem}
+.tx-title strong{font-size:.94rem}
+.tx-title small{font-size:.72rem;line-height:1.35}
+.tx-value strong{font-size:.92rem}
+.tx-value small{font-size:.68rem}
+.search-box input{font-size:16px}
+.filter-chip{font-size:.76rem}
+.calendar-weekdays span{font-size:.68rem}
+.calendar-number{font-size:.9rem}
+.calendar-legend{font-size:.7rem}
+.calendar-event{font-size:.8rem}
+.more-item strong{font-size:.94rem}
+.more-item small{font-size:.73rem}
+.empty-state{font-size:.78rem}
+.empty-state strong{font-size:.96rem}
+.nav-item{font-size:.68rem}
+.nav-icon{font-size:1.18rem}
+.modal-head h2{font-size:1.05rem}
+.modal-head p{font-size:.74rem}
+.field label{font-size:.78rem}
+.input,.select,.textarea{font-size:16px}
+.segmented button{font-size:.82rem}
+.btn{font-size:.84rem}
+.helper{font-size:.72rem}
+.detail-total small{font-size:.74rem}
+.detail-total strong{font-size:1.55rem}
+.detail-card small{font-size:.7rem}
+.detail-card strong{font-size:.86rem}
+.toast{font-size:.82rem}
+.update-notice p{font-size:.82rem}
+.update-notice p strong{font-size:.98rem}
+.update-version-row span{font-size:.7rem}
+.update-version-row strong{font-size:.84rem}
+
+@media(max-width:640px){
+  .topbar{height:calc(58px + env(safe-area-inset-top))}
+  .brand-copy strong{font-size:1rem}
+  .month-switcher{grid-template-columns:38px 1fr 38px}
+  .month-switcher button{height:38px;font-size:1.18rem}
+  .balance-card{padding:19px}
+  .balance-value{font-size:2.35rem}
+  .section-card{padding:15px}
+  .transaction-item{min-height:62px}
+  .tx-icon{width:40px;height:40px}
+  .bottom-nav{height:calc(72px + env(safe-area-inset-bottom))}
+  .nav-item{height:54px}
+  .calendar-weekdays span{height:26px}
+  .calendar-cell{border-radius:12px}
+  .modal-head{padding:12px 14px}
+  .modal-body{padding:12px 14px 14px}
+  .modal-footer{padding:10px 14px max(12px,env(safe-area-inset-bottom))}
+}
