@@ -1,6 +1,13 @@
 (() => {
   const STORAGE_KEY='sobra.transactions.v1';
   const THEME_KEY='sobra.theme.v1';
+  const SOBRA_VERSION='0.2.0';
+  const SOBRA_RELEASE_ID=document.querySelector('meta[name="sobra-release"]')?.content||'development';
+  const RELEASE_CHECK_MS=120000;
+  const RELEASE_MIN_CHECK_MS=20000;
+  let latestRelease=null;
+  let lastReleaseCheck=0;
+  let pendingReleaseNotice=false;
   const money=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
   const monthFmt=new Intl.DateTimeFormat('pt-BR',{month:'long',year:'numeric'});
   const shortDateFmt=new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'short'});
@@ -213,7 +220,7 @@
         <button class="more-item" id="resetData"><span><strong>Restaurar demonstração</strong><small>Voltar aos dados fictícios originais</small></span><span>›</span></button>
         <div class="more-item"><span><strong>Armazenamento local</strong><small>Nesta fase os dados ficam somente neste navegador</small></span><span>Local</span></div>
         <div class="more-item"><span><strong>Firebase</strong><small>Será conectado depois da validação visual</small></span><span>Em breve</span></div>
-        <div class="more-item"><span><strong>Versão</strong><small>Protótipo visual inicial do Sobra</small></span><span>0.1</span></div>
+        <div class="more-item"><span><strong>Versão</strong><small>Atualizações verificadas automaticamente</small></span><span>${SOBRA_VERSION}</span></div>
       </div>
     </section>`;
   }
@@ -249,6 +256,77 @@
   function closeModal(){
     document.body.classList.remove('modal-open');
     document.getElementById('modalRoot').innerHTML='';
+    if(pendingReleaseNotice) setTimeout(maybeShowReleaseUpdate,80);
+  }
+
+  async function fetchLatestRelease(){
+    const url=new URL('release.json',location.href);
+    url.searchParams.set('_',String(Date.now()));
+    const response=await fetch(url.toString(),{cache:'no-store'});
+    if(!response.ok)throw new Error(`release manifest ${response.status}`);
+    const data=await response.json();
+    if(!data?.release)return null;
+    return data;
+  }
+
+  function maybeShowReleaseUpdate(){
+    if(!latestRelease||latestRelease.release===SOBRA_RELEASE_ID)return;
+    if(sessionStorage.getItem('sobra.dismissedRelease')===latestRelease.release)return;
+    if(document.body.classList.contains('modal-open')){
+      pendingReleaseNotice=true;
+      return;
+    }
+    pendingReleaseNotice=false;
+    openModal(
+      'Nova versão disponível',
+      `Sobra ${escapeHtml(latestRelease.version||'')}`,
+      `<div class="update-notice">
+        <div class="update-notice-icon">↻</div>
+        <p><strong>O Sobra recebeu uma atualização.</strong></p>
+        <p>Atualize para carregar as melhorias mais recentes. Seus lançamentos salvos neste navegador serão mantidos.</p>
+        <div class="update-version-row">
+          <span>Versão atual <strong>${escapeHtml(SOBRA_VERSION)}</strong></span>
+          <span>Nova versão <strong>${escapeHtml(latestRelease.version||latestRelease.release)}</strong></span>
+        </div>
+      </div>`,
+      '<button class="btn btn-secondary" data-dismiss-update>Depois</button><button class="btn btn-primary" data-apply-update>Atualizar agora</button>'
+    );
+  }
+
+  async function checkForRelease(force=false){
+    const time=Date.now();
+    if(!force&&time-lastReleaseCheck<RELEASE_MIN_CHECK_MS)return;
+    lastReleaseCheck=time;
+    try{
+      const release=await fetchLatestRelease();
+      if(!release)return;
+      latestRelease=release;
+      if(release.release!==SOBRA_RELEASE_ID)maybeShowReleaseUpdate();
+    }catch(error){
+      console.debug('Verificação de versão indisponível:',error?.message||error);
+    }
+  }
+
+  function applyReleaseUpdate(){
+    if(!latestRelease)return;
+    const url=new URL(location.href);
+    url.searchParams.set('_build',latestRelease.release);
+    location.assign(url.toString());
+  }
+
+  function dismissReleaseUpdate(){
+    if(latestRelease)sessionStorage.setItem('sobra.dismissedRelease',latestRelease.release);
+    pendingReleaseNotice=false;
+    closeModal();
+  }
+
+  function startReleaseMonitor(){
+    checkForRelease(true);
+    setInterval(()=>checkForRelease(false),RELEASE_CHECK_MS);
+    window.addEventListener('focus',()=>checkForRelease(false),{passive:true});
+    document.addEventListener('visibilitychange',()=>{
+      if(document.visibilityState==='visible')checkForRelease(false);
+    });
   }
   function entryDate(){
     const y=state.selectedMonth.getFullYear(),m=state.selectedMonth.getMonth();
@@ -378,6 +456,8 @@
     const scheduled=e.target.closest('[data-mark-scheduled]');if(scheduled){updateTxStatus(scheduled.dataset.markScheduled,'scheduled');return}
     const del=e.target.closest('[data-delete-tx]');if(del){deleteTx(del.dataset.deleteTx);return}
     const dup=e.target.closest('[data-duplicate-tx]');if(dup){duplicateTx(dup.dataset.duplicateTx);return}
+    if(e.target.closest('[data-apply-update]')){applyReleaseUpdate();return}
+    if(e.target.closest('[data-dismiss-update]')){dismissReleaseUpdate();return}
     if(e.target.closest('#themeToggle')||e.target.closest('#themeMenu')){toggleTheme();return}
     if(e.target.closest('#resetData')){resetData();return}
   });
@@ -389,4 +469,5 @@
 
   restoreTheme();
   render();
+  startReleaseMonitor();
 })();
