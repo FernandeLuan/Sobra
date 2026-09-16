@@ -875,3 +875,60 @@ body{font-size:16px}
   .add-choice-grid{grid-template-columns:1fr}
   .add-choice{min-height:112px}
 }
+
+
+/* =========================================================
+   Sobra 0.5.0 — permanent planning registry
+   ========================================================= */
+.accounts-page{padding-top:8px}
+.accounts-page .account-tabs{margin-top:0}
+.accounts-intro.permanent{
+  padding:10px 2px 2px
+}
+.accounts-intro.permanent strong{font-size:1.06rem}
+.accounts-intro.permanent span{
+  max-width:34rem;font-size:.84rem;line-height:1.5
+}
+.account-group{margin-top:18px}
+.account-group .section-head h2{font-size:.98rem}
+.account-side small{font-size:.72rem}
+.account-item:active{background:var(--surface-2)}
+
+.add-choice-grid.four{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:9px
+}
+.add-choice-grid.four .add-choice{
+  min-height:132px;padding:15px 11px
+}
+.add-choice.soft{background:var(--bg)}
+.add-choice.soft .add-choice-icon{opacity:.9}
+
+#valueKindField[hidden],#statusField[hidden]{display:none!important}
+
+.danger-link{
+  width:100%;min-height:44px;margin-top:3px;border:0;border-radius:11px;
+  background:color-mix(in srgb,var(--danger) 8%,transparent);
+  color:var(--danger);font-size:.82rem;font-weight:800
+}
+.danger-link:active{transform:scale(.99)}
+
+.helper{
+  font-size:.78rem;line-height:1.5
+}
+
+/* Permanent account rows are calm; month occurrences carry operational status */
+.account-item[data-open-master] .account-icon{
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,currentColor 10%,transparent)
+}
+
+@media(max-width:390px){
+  .add-choice-grid.four{grid-template-columns:1fr 1fr}
+  .add-choice-grid.four .add-choice{min-height:122px}
+  .add-choice-grid.four .add-choice small{font-size:.7rem}
+}
+
+@media(max-width:340px){
+  .add-choice-grid.four{grid-template-columns:1fr}
+  .add-choice-grid.four .add-choice{min-height:102px}
+}
