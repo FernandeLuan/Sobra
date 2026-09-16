@@ -92,16 +92,12 @@
   function monthSwitcher(){
     return `<div class="month-switcher"><button data-month="-1" aria-label="Mês anterior">‹</button><div class="month-label">${monthFmt.format(state.selectedMonth)}</div><button data-month="1" aria-label="Próximo mês">›</button></div>`;
   }
-  function heading(eyebrow,title,description=''){
-    return `<div class="page-heading"><p class="eyebrow">${eyebrow}</p><h1>${title}</h1>${description?`<p>${description}</p>`:''}</div>`;
-  }
 
   function renderHome(){
     const s=getSummary();
     const txs=monthTransactions().filter(t=>t.type==='expense').sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
     const upcoming=txs.filter(t=>t.status!=='paid').slice(0,5);
     return `<section class="page">
-      ${heading('Visão geral','Seu dinheiro, sem ruído.','Acompanhe o que entrou, o que já saiu e quanto deve sobrar no mês.')}
       ${monthSwitcher()}
       <div class="balance-card">
         <p class="balance-label">Sobra prevista</p>
@@ -144,7 +140,6 @@
     const filters=[['all','Todos'],['launched','Lançados'],['scheduled','Agendados'],['paid','Pagos'],['income','Receitas']];
     const txs=filteredTransactions();
     return `<section class="page">
-      ${heading('Movimentações','Lançamentos','Tudo que entra e sai, organizado por mês.')}
       ${monthSwitcher()}
       <div class="search-box"><input id="searchInput" value="${escapeAttr(state.search)}" placeholder="Buscar lançamento ou categoria"></div>
       <div class="filters">${filters.map(([id,label])=>`<button class="filter-chip ${state.filter===id?'active':''}" data-filter="${id}">${label}</button>`).join('')}</div>
@@ -163,7 +158,6 @@
       </div>`;
     }).join('');
     return `<section class="page">
-      ${heading('Agenda financeira','Calendário','Veja em quais dias seu dinheiro entra e sai.')}
       ${monthSwitcher()}
       <div class="section-card" style="margin-top:0"><div class="calendar-list">${days||'<div class="empty-state"><strong>Sem movimentações</strong>Este mês ainda não tem lançamentos.</div>'}</div></div>
     </section>`;
@@ -171,7 +165,6 @@
 
   function renderMore(){
     return `<section class="page">
-      ${heading('Preferências','Mais','Ajustes do protótipo e atalhos para testar a experiência.')}
       <div class="more-grid">
         <button class="more-item" id="themeMenu"><span><strong>Tema</strong><small>Alternar entre modo claro e escuro</small></span><span>›</span></button>
         <button class="more-item" id="resetData"><span><strong>Restaurar demonstração</strong><small>Voltar aos dados fictícios originais</small></span><span>›</span></button>
