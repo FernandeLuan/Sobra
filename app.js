@@ -2,7 +2,7 @@
   const STORAGE_KEY='sobra.transactions.v1';
   const OVERRIDES_KEY='sobra.occurrences.v1';
   const THEME_KEY='sobra.theme.v1';
-  const SOBRA_VERSION='0.5.0';
+  const SOBRA_VERSION='0.6.0';
   const SOBRA_RELEASE_ID=document.querySelector('meta[name="sobra-release"]')?.content||'development';
   const RELEASE_CHECK_MS=120000;
   const RELEASE_MIN_CHECK_MS=20000;
@@ -240,10 +240,21 @@
     </button>`;
   }
 
+  function monthControlItem(t){
+    const tone=t.status==='paid'?'paid':t.status==='scheduled'?'scheduled':'launched';
+    return `<button class="month-control-item" data-open-tx="${t.id}">
+      <span class="month-control-date">${dueContextLabel(t)}</span>
+      <span class="tx-title"><strong>${escapeHtml(t.description)}</strong><small>${escapeHtml(t.category)}</small></span>
+      <span class="month-control-side">
+        <strong>− ${money.format(t.amount)}</strong>
+        <small class="${tone}">${t.status==='paid'?'Paga':t.status==='scheduled'?'Agendada':'Lançada'}</small>
+      </span>
+    </button>`;
+  }
+
   function renderHome(){
     const s=getSummary();
     const txs=monthTransactions().filter(t=>t.type==='expense').sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
-    const upcoming=txs.filter(t=>t.status!=='paid').slice(0,5);
     return `<section class="page home-page">
       <div class="balance-card">
         ${homeMonthSelector()}
@@ -252,12 +263,10 @@
           <h2 class="balance-value">${money.format(s.sobra)}</h2>
           <span class="balance-caption">depois de todas as contas deste mês</span>
         </div>
-
         <div class="balance-row">
           <div class="balance-mini"><small>Entradas</small><strong>${money.format(s.revenue)}</strong></div>
           <div class="balance-mini"><small>Contas</small><strong>${money.format(s.expensesTotal)}</strong></div>
         </div>
-
         <div class="balance-commitment">
           <div class="balance-progress"><span style="width:${s.percentage}%"></span></div>
           <div class="balance-commitment-copy">
@@ -267,21 +276,24 @@
         </div>
       </div>
 
-      <section class="content-section payment-focus">
-        <div class="payment-focus-main">
-          <span>Ainda falta pagar</span>
-          <strong>${money.format(s.remaining)}</strong>
+      <section class="content-section payment-status-section">
+        <div class="section-head"><h2>Pagamento das contas</h2><span></span></div>
+        <div class="payment-status-grid">
+          <div class="payment-status-card launched">
+            <span class="status-dot"></span><small>Lançadas</small><strong>${money.format(s.launched)}</strong>
+          </div>
+          <div class="payment-status-card scheduled">
+            <span class="status-dot"></span><small>Agendadas</small><strong>${money.format(s.scheduled)}</strong>
+          </div>
+          <div class="payment-status-card paid">
+            <span class="status-dot"></span><small>Pagas</small><strong>${money.format(s.paid)}</strong>
+          </div>
         </div>
-        <div class="payment-focus-meta">
-          <span><i class="status-dot paid"></i>Pago ${money.format(s.paid)}</span>
-          <span><i class="status-dot scheduled"></i>Agendado ${money.format(s.scheduled)}</span>
-        </div>
-        <button class="text-action" data-nav="accounts">Ver contas</button>
       </section>
 
-      <section class="content-section upcoming-section">
-        <div class="section-head"><h2>Próximas contas</h2><button data-nav="calendar">Calendário</button></div>
-        <div class="list-surface upcoming-list">${upcoming.length?upcoming.map(upcomingItem).join(''):'<div class="empty-state"><strong>Tudo certo por aqui</strong>Nenhuma conta pendente neste mês.</div>'}</div>
+      <section class="content-section month-control-section">
+        <div class="section-head"><h2>Contas do mês</h2><button data-nav="calendar">Calendário</button></div>
+        <div class="list-surface month-control-list">${txs.length?txs.map(monthControlItem).join(''):'<div class="empty-state"><strong>Nenhuma conta neste mês</strong>Cadastre suas contas na aba Contas.</div>'}</div>
       </section>
     </section>`;
   }
@@ -335,12 +347,21 @@
         <button class="${!isExpense?'active':''}" data-account-tab="income">Proventos</button>
       </div>
       <div class="accounts-intro permanent">
-        <strong>${isExpense?'Seu cadastro de contas':'Seu cadastro de proventos'}</strong>
-        <span>${isExpense?'Cadastre uma vez. As recorrentes entram automaticamente em cada mês.':'Salários e rendas recorrentes aparecem automaticamente nos próximos meses.'}</span>
+        <div class="accounts-intro-copy">
+          <strong>${isExpense?'Seu cadastro de contas':'Seu cadastro de proventos'}</strong>
+          <span>${isExpense?'Cadastre uma vez. As recorrentes entram automaticamente em cada mês.':'Salários e rendas recorrentes aparecem automaticamente nos próximos meses.'}</span>
+        </div>
+        <button class="account-add-action" data-add-kind="${isExpense?'expense':'income'}" data-add-mode="recurring">+ ${isExpense?'Nova conta':'Novo provento'}</button>
       </div>
       ${renderAccountGroup('Recorrentes',recurring,isExpense?'Nenhuma conta recorrente cadastrada.':'Nenhum provento recorrente cadastrado.',true)}
       ${installments.length?renderAccountGroup('Parcelados',installments,'',false):''}
-      ${renderAccountGroup(`Avulsos de ${monthName}`,monthly,isExpense?'Nenhuma conta avulsa neste mês.':'Nenhum provento avulso neste mês.',false)}
+      <section class="account-group">
+        <div class="section-head">
+          <h2>Avulsos de ${monthName}</h2>
+          <button data-add-kind="${isExpense?'expense':'income'}" data-add-mode="single">+ Avulso</button>
+        </div>
+        <div class="list-surface account-list">${monthly.length?monthly.map(t=>accountItem(t,false)).join(''):`<div class="empty-state compact">${isExpense?'Nenhuma conta avulsa neste mês.':'Nenhum provento avulso neste mês.'}</div>`}</div>
+      </section>
     </section>`;
   }
 
@@ -744,9 +765,21 @@
         <div class="detail-card"><small>Repetição</small><strong>${t.mode==='recurring'?'Todo mês':t.mode==='installment'?'Parcelado':'Somente este mês'}</strong></div>
       </div>
       ${t.notes?`<div class="detail-card" style="margin-top:9px"><small>Observações</small><strong>${escapeHtml(t.notes)}</strong></div>`:''}
+      ${t.type==='expense'?`<div class="status-control">
+        <span>Status deste mês</span>
+        <div class="status-control-grid">
+          <button class="${t.status==='launched'?'active launched':''}" data-set-status="${t.id}" data-status="launched">Lançada</button>
+          <button class="${t.status==='scheduled'?'active scheduled':''}" data-set-status="${t.id}" data-status="scheduled">Agendada</button>
+          <button class="${t.status==='paid'?'active paid':''}" data-set-status="${t.id}" data-status="paid">Paga</button>
+        </div>
+      </div>`:`<div class="status-control">
+        <span>Status deste mês</span>
+        <div class="status-control-grid two">
+          <button class="${t.status==='expected'?'active launched':''}" data-set-status="${t.id}" data-status="expected">Previsto</button>
+          <button class="${t.status==='received'?'active paid':''}" data-set-status="${t.id}" data-status="received">Recebido</button>
+        </div>
+      </div>`}
       <div class="detail-actions">
-        ${t.type==='expense'&&t.status!=='paid'?`<button class="btn btn-primary" data-mark-paid="${t.id}">Marcar como paga</button>`:''}
-        ${t.type==='expense'&&t.status==='launched'?`<button class="btn btn-secondary" data-mark-scheduled="${t.id}">Marcar como agendada</button>`:''}
         ${t._sourceId&&t.mode==='recurring'?`<button class="btn btn-secondary" data-adjust-occurrence="${t.id}">Ajustar valor deste mês</button>`:''}
         <button class="btn btn-secondary" data-delete-tx="${t.id}">Excluir ${t.type==='expense'?'conta':'provento'}</button>
       </div>`,
@@ -779,7 +812,9 @@
       const base=state.transactions.find(x=>x.id===id);
       if(base)base.status=status;
     }
-    persist();closeModal();render();showToast(status==='paid'?'Conta marcada como paga.':'Conta marcada como agendada.');
+    persist();closeModal();render();
+    const labels={launched:'Lançada',scheduled:'Agendada',paid:'Paga',expected:'Previsto',received:'Recebido'};
+    showToast(`Status alterado para ${labels[status]||status}.`);
   }
   function deleteTx(id){
     const t=viewTransaction(id);if(!t)return;
@@ -870,7 +905,6 @@
     const master=e.target.closest('[data-open-master]');if(master){openMaster(master.dataset.openMaster);return}
     const calendarDay=e.target.closest('[data-calendar-date]');if(calendarDay){state.calendarDate=calendarDay.dataset.calendarDate;render();return}
     const tx=e.target.closest('[data-open-tx]');if(tx){openTransaction(tx.dataset.openTx);return}
-    if(e.target.closest('#newEntryBtn')){openAddChoice();return}
     const addKind=e.target.closest('[data-add-kind]');if(addKind){closeModal();openEntryModal(addKind.dataset.addKind,addKind.dataset.addMode||'recurring');return}
     if(e.target.closest('[data-close-modal]')){closeModal();return}
     const backdrop=e.target.closest('[data-modal-backdrop]');if(backdrop&&e.target===backdrop){closeModal();return}
@@ -880,8 +914,7 @@
     const endMasterBtn=e.target.closest('[data-end-master]');if(endMasterBtn){endMaster(endMasterBtn.dataset.endMaster);return}
     const adjust=e.target.closest('[data-adjust-occurrence]');if(adjust){openOccurrenceValueEditor(adjust.dataset.adjustOccurrence);return}
     const saveOccurrence=e.target.closest('[data-save-occurrence]');if(saveOccurrence){saveOccurrenceValue(saveOccurrence.dataset.saveOccurrence);return}
-    const paid=e.target.closest('[data-mark-paid]');if(paid){updateTxStatus(paid.dataset.markPaid,'paid');return}
-    const scheduled=e.target.closest('[data-mark-scheduled]');if(scheduled){updateTxStatus(scheduled.dataset.markScheduled,'scheduled');return}
+    const setStatus=e.target.closest('[data-set-status]');if(setStatus){updateTxStatus(setStatus.dataset.setStatus,setStatus.dataset.status);return}
     const del=e.target.closest('[data-delete-tx]');if(del){deleteTx(del.dataset.deleteTx);return}
     const skip=e.target.closest('[data-skip-occurrence]');if(skip){skipOccurrence(skip.dataset.skipOccurrence);return}
     const delSeries=e.target.closest('[data-delete-series]');if(delSeries){deleteSeries(delSeries.dataset.deleteSeries);return}
