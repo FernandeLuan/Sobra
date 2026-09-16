@@ -1094,3 +1094,278 @@ body{font-size:16px}
 .status-text.launched{color:var(--primary)}
 .status-text.scheduled{color:var(--warning)}
 .status-text.paid{color:var(--positive)}
+
+
+/* =========================================================
+   Sobra 0.8.0 — UX polish / modal system / configuration calm
+   ========================================================= */
+
+/* Main balance: secondary values deserve clearer hierarchy */
+.balance-row{gap:10px;margin-top:18px}
+.balance-mini{
+  padding:13px 14px;
+  border:1px solid rgba(255,255,255,.2);
+  background:rgba(255,255,255,.11);
+  border-radius:13px
+}
+.balance-mini small{
+  font-size:.78rem;font-weight:650;opacity:.82
+}
+.balance-mini strong{
+  display:block;margin-top:4px;
+  font-size:1.06rem;font-weight:800;letter-spacing:-.025em
+}
+.balance-commitment-copy{
+  justify-content:flex-start;
+  margin-top:9px;font-size:.78rem;font-weight:650
+}
+
+/* Home monthly rows */
+.month-control-side>strong{
+  color:var(--text);
+  font-size:.94rem
+}
+.month-control-item .tx-title small{
+  color:var(--muted);font-size:.75rem;font-weight:650
+}
+
+/* Accounts is configuration, not an alert screen */
+.account-icon.expense{
+  background:var(--primary-soft);
+  color:var(--primary)
+}
+.account-side strong.expense{color:var(--text)}
+.account-side strong.income{color:var(--positive)}
+.account-side small{
+  margin-top:4px;
+  color:var(--muted);
+  font-size:.7rem
+}
+.account-item{
+  min-height:72px
+}
+.account-copy small{
+  font-size:.74rem;
+  line-height:1.35
+}
+.account-add-action{
+  box-shadow:none;
+  background:var(--primary)
+}
+
+/* Modal shell: lock to a true vertical bottom sheet */
+body.modal-open{
+  overflow:hidden!important;
+  overscroll-behavior:none;
+  touch-action:none
+}
+.modal-backdrop{
+  overflow:hidden;
+  touch-action:none
+}
+.modal{
+  max-width:440px;
+  overflow:hidden;
+  overscroll-behavior:contain;
+  touch-action:pan-y
+}
+.modal-head,
+.modal-body,
+.modal-footer{
+  min-width:0;
+  width:100%;
+  box-sizing:border-box
+}
+.modal-head>div{min-width:0}
+.modal-head h2,
+.modal-head p{
+  overflow-wrap:anywhere
+}
+.modal-body{
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  overscroll-behavior-y:contain;
+  overscroll-behavior-x:none;
+  touch-action:pan-y
+}
+.modal-body>*,
+.modal-body .form-grid,
+.modal-body .field,
+.modal-body .field-row,
+.modal-body .detail-grid{
+  min-width:0;
+  max-width:100%;
+  box-sizing:border-box
+}
+.modal input,
+.modal select,
+.modal textarea,
+.modal button{
+  max-width:100%;
+  box-sizing:border-box
+}
+.field-row{
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr)
+}
+.modal-footer .btn:only-child{
+  grid-column:1/-1
+}
+
+@media(max-width:640px){
+  .modal-backdrop{
+    align-items:flex-end;
+    padding:0
+  }
+  .modal{
+    width:100%;
+    max-width:none;
+    max-height:88dvh;
+    border-radius:22px 22px 0 0
+  }
+  .modal:before{
+    width:42px;height:5px;top:9px
+  }
+  .modal-head{
+    padding:22px 18px 13px
+  }
+  .modal-head h2{font-size:1.18rem}
+  .modal-head p{font-size:.79rem;line-height:1.4}
+  .modal-body{padding:14px 18px 18px}
+  .modal-footer{
+    padding:12px 18px max(14px,env(safe-area-inset-bottom));
+    gap:9px
+  }
+}
+
+/* Transaction details: one hierarchy, no repeated information */
+.transaction-sheet{
+  display:grid;
+  gap:16px
+}
+.transaction-amount{
+  padding:4px 0 2px;
+  font-size:2rem;
+  line-height:1;
+  letter-spacing:-.045em;
+  font-weight:800
+}
+.status-control{
+  margin:0;
+  padding:14px;
+  border-radius:14px;
+  background:var(--surface-2)
+}
+.status-control>span{
+  margin-bottom:10px;
+  font-size:.76rem;
+  letter-spacing:.01em
+}
+.status-control-grid button{
+  min-height:46px;
+  background:var(--surface)
+}
+.transaction-sheet-actions{
+  display:grid;
+  gap:8px
+}
+.sheet-action{
+  width:100%;
+  min-height:48px;
+  border:1px solid var(--border);
+  border-radius:12px;
+  background:var(--surface);
+  color:var(--text);
+  font-size:.84rem;
+  font-weight:750
+}
+.sheet-danger{
+  width:100%;
+  min-height:42px;
+  margin-top:3px;
+  border:0;
+  background:transparent;
+  color:var(--danger);
+  font-size:.79rem;
+  font-weight:750
+}
+.sheet-danger.inline{
+  margin-top:2px;
+  min-height:40px;
+  text-align:left
+}
+
+/* Forms: conventional, compact and predictable */
+.clean-entry-form{
+  gap:13px
+}
+.clean-entry-form .field{
+  gap:6px
+}
+.clean-entry-form .field label{
+  font-size:.78rem;
+  color:var(--muted);
+  font-weight:750
+}
+.money-input{
+  min-height:48px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:0 12px;
+  border:1px solid var(--border);
+  border-radius:12px;
+  background:var(--surface)
+}
+.money-input span{
+  flex:0 0 auto;
+  color:var(--muted);
+  font-size:.88rem;
+  font-weight:700
+}
+.money-input input{
+  width:100%;
+  min-width:0;
+  border:0;
+  outline:0;
+  background:transparent;
+  color:var(--text);
+  font-size:1rem;
+  font-weight:750
+}
+.optional-label{
+  font-size:.68rem;
+  font-weight:550;
+  color:var(--muted)
+}
+
+/* Legacy giant amount field is no longer used; keep it harmless if cached markup appears */
+.clean-entry-form .entry-amount-field{
+  text-align:left;
+  padding:0
+}
+
+/* Status cards read as filters, not tags */
+.payment-status-card{
+  border-radius:12px
+}
+.payment-status-card.active{
+  box-shadow:none;
+  transform:translateY(-1px)
+}
+.clear-home-filter[hidden]{display:none!important}
+
+/* Destructive actions remain visually quiet until chosen */
+.danger-link{
+  background:transparent;
+  min-height:40px;
+  padding:0;
+  text-align:left;
+  color:var(--danger);
+  font-size:.78rem
+}
+
+@media(max-width:390px){
+  .balance-mini strong{font-size:.98rem}
+  .transaction-amount{font-size:1.8rem}
+  .field-row{grid-template-columns:1fr}
+}
