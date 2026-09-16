@@ -52,26 +52,26 @@
   function seedTransactions(){
     const y=initialMonth.getFullYear(),m=initialMonth.getMonth();
     return [
-      {id:uid(),type:'income',description:'Salário Luan',amount:4000,category:'Receitas',dueDate:iso(y,m,5),status:'received',mode:'recurring',recurrenceStart:selectedKey(),valueKind:'fixed'},
-      {id:uid(),type:'income',description:'Salário Mozi',amount:1200,category:'Receitas',dueDate:iso(y,m,5),status:'received',mode:'recurring',recurrenceStart:selectedKey(),valueKind:'fixed'},
+      {id:uid(),type:'income',description:'Salário Luan',amount:4000,category:'Receitas',dueDate:iso(y,m,5),status:'received',mode:'recurring',recurrenceStart:`${y}-${pad(m+1)}`,valueKind:'fixed'},
+      {id:uid(),type:'income',description:'Salário Mozi',amount:1200,category:'Receitas',dueDate:iso(y,m,5),status:'received',mode:'recurring',recurrenceStart:`${y}-${pad(m+1)}`,valueKind:'fixed'},
       {id:uid(),type:'income',description:'Rescisão Mozi',amount:8000,category:'Receitas',dueDate:iso(y,m,10),status:'received',mode:'single'},
 
-      {id:uid(),type:'expense',description:'Internet',amount:100,category:'Casa',dueDate:iso(y,m,10),status:'launched',mode:'recurring',recurrenceStart:selectedKey(),valueKind:'fixed'},
-      {id:uid(),type:'expense',description:'Luz',amount:250,category:'Casa',dueDate:iso(y,m,15),status:'launched',mode:'recurring',recurrenceStart:selectedKey(),valueKind:'variable'},
-      {id:uid(),type:'expense',description:'Água',amount:100,category:'Casa',dueDate:iso(y,m,15),status:'launched',mode:'recurring',recurrenceStart:selectedKey(),valueKind:'variable'},
-      {id:uid(),type:'expense',description:'Ailos Cons.',amount:833,category:'Financeiro',dueDate:iso(y,m,5),status:'launched',mode:'recurring',recurrenceStart:selectedKey(),valueKind:'fixed'},
-      {id:uid(),type:'expense',description:'Ailos Cartão',amount:700,category:'Cartão',dueDate:iso(y,m,10),status:'launched',mode:'recurring',recurrenceStart:selectedKey(),valueKind:'variable'},
-      {id:uid(),type:'expense',description:'Ailos Cotas',amount:50,category:'Investimentos',dueDate:iso(y,m,10),status:'launched',mode:'recurring',recurrenceStart:selectedKey(),valueKind:'fixed'},
-      {id:uid(),type:'expense',description:'Seg. Vida',amount:50,category:'Seguro',dueDate:iso(y,m,10),status:'launched',mode:'recurring',recurrenceStart:selectedKey(),valueKind:'fixed'},
-      {id:uid(),type:'expense',description:'Gasolina',amount:300,category:'Transporte',dueDate:iso(y,m,20),status:'launched',mode:'recurring',recurrenceStart:selectedKey(),valueKind:'variable'},
-      {id:uid(),type:'expense',description:'Internet Mov.',amount:60,category:'Assinaturas',dueDate:iso(y,m,10),status:'launched',mode:'recurring',recurrenceStart:selectedKey(),valueKind:'fixed'},
-      {id:uid(),type:'expense',description:'Seg. Carro',amount:80,category:'Seguro',dueDate:iso(y,m,10),status:'launched',mode:'recurring',recurrenceStart:selectedKey(),valueKind:'fixed'},
-      {id:uid(),type:'expense',description:'Seg. Moto',amount:90,category:'Seguro',dueDate:iso(y,m,10),status:'launched',mode:'recurring',recurrenceStart:selectedKey(),valueKind:'fixed'},
-      {id:uid(),type:'expense',description:'Moto',amount:297,category:'Financeiro',dueDate:iso(y,m,15),status:'launched',mode:'recurring',recurrenceStart:selectedKey(),valueKind:'fixed'},
-      {id:uid(),type:'expense',description:'Carro',amount:1354,category:'Financeiro',dueDate:iso(y,m,15),status:'launched',mode:'recurring',recurrenceStart:selectedKey(),valueKind:'fixed'},
-      {id:uid(),type:'expense',description:'Faculdade',amount:180,category:'Faculdade',dueDate:iso(y,m,10),status:'launched',mode:'recurring',recurrenceStart:selectedKey(),valueKind:'fixed'},
-      {id:uid(),type:'expense',description:'Aplic. Prog.',amount:400,category:'Investimentos',dueDate:iso(y,m,5),status:'launched',mode:'recurring',recurrenceStart:selectedKey(),valueKind:'fixed'},
-      {id:uid(),type:'expense',description:'Mercado Pago',amount:800,category:'Cartão',dueDate:iso(y,m,10),status:'launched',mode:'recurring',recurrenceStart:selectedKey(),valueKind:'variable'}
+      {id:uid(),type:'expense',description:'Internet',amount:100,category:'Casa',dueDate:iso(y,m,10),status:'launched',mode:'recurring',recurrenceStart:`${y}-${pad(m+1)}`,valueKind:'fixed'},
+      {id:uid(),type:'expense',description:'Luz',amount:250,category:'Casa',dueDate:iso(y,m,15),status:'launched',mode:'recurring',recurrenceStart:`${y}-${pad(m+1)}`,valueKind:'variable'},
+      {id:uid(),type:'expense',description:'Água',amount:100,category:'Casa',dueDate:iso(y,m,15),status:'launched',mode:'recurring',recurrenceStart:`${y}-${pad(m+1)}`,valueKind:'variable'},
+      {id:uid(),type:'expense',description:'Ailos Cons.',amount:833,category:'Financeiro',dueDate:iso(y,m,5),status:'launched',mode:'recurring',recurrenceStart:`${y}-${pad(m+1)}`,valueKind:'fixed'},
+      {id:uid(),type:'expense',description:'Ailos Cartão',amount:700,category:'Cartão',dueDate:iso(y,m,10),status:'launched',mode:'recurring',recurrenceStart:`${y}-${pad(m+1)}`,valueKind:'variable'},
+      {id:uid(),type:'expense',description:'Ailos Cotas',amount:50,category:'Investimentos',dueDate:iso(y,m,10),status:'launched',mode:'recurring',recurrenceStart:`${y}-${pad(m+1)}`,valueKind:'fixed'},
+      {id:uid(),type:'expense',description:'Seg. Vida',amount:50,category:'Seguro',dueDate:iso(y,m,10),status:'launched',mode:'recurring',recurrenceStart:`${y}-${pad(m+1)}`,valueKind:'fixed'},
+      {id:uid(),type:'expense',description:'Gasolina',amount:300,category:'Transporte',dueDate:iso(y,m,20),status:'launched',mode:'recurring',recurrenceStart:`${y}-${pad(m+1)}`,valueKind:'variable'},
+      {id:uid(),type:'expense',description:'Internet Mov.',amount:60,category:'Assinaturas',dueDate:iso(y,m,10),status:'launched',mode:'recurring',recurrenceStart:`${y}-${pad(m+1)}`,valueKind:'fixed'},
+      {id:uid(),type:'expense',description:'Seg. Carro',amount:80,category:'Seguro',dueDate:iso(y,m,10),status:'launched',mode:'recurring',recurrenceStart:`${y}-${pad(m+1)}`,valueKind:'fixed'},
+      {id:uid(),type:'expense',description:'Seg. Moto',amount:90,category:'Seguro',dueDate:iso(y,m,10),status:'launched',mode:'recurring',recurrenceStart:`${y}-${pad(m+1)}`,valueKind:'fixed'},
+      {id:uid(),type:'expense',description:'Moto',amount:297,category:'Financeiro',dueDate:iso(y,m,15),status:'launched',mode:'recurring',recurrenceStart:`${y}-${pad(m+1)}`,valueKind:'fixed'},
+      {id:uid(),type:'expense',description:'Carro',amount:1354,category:'Financeiro',dueDate:iso(y,m,15),status:'launched',mode:'recurring',recurrenceStart:`${y}-${pad(m+1)}`,valueKind:'fixed'},
+      {id:uid(),type:'expense',description:'Faculdade',amount:180,category:'Faculdade',dueDate:iso(y,m,10),status:'launched',mode:'recurring',recurrenceStart:`${y}-${pad(m+1)}`,valueKind:'fixed'},
+      {id:uid(),type:'expense',description:'Aplic. Prog.',amount:400,category:'Investimentos',dueDate:iso(y,m,5),status:'launched',mode:'recurring',recurrenceStart:`${y}-${pad(m+1)}`,valueKind:'fixed'},
+      {id:uid(),type:'expense',description:'Mercado Pago',amount:800,category:'Cartão',dueDate:iso(y,m,10),status:'launched',mode:'recurring',recurrenceStart:`${y}-${pad(m+1)}`,valueKind:'variable'}
     ];
   }
 
