@@ -1,8 +1,10 @@
 (() => {
   const STORAGE_KEY='sobra.transactions.v1';
   const OVERRIDES_KEY='sobra.occurrences.v1';
+  const DEMO_DATA_KEY='sobra.demoDataVersion';
+  const DEMO_DATA_VERSION='spreadsheet-20260916-v1';
   const THEME_KEY='sobra.theme.v1';
-  const SOBRA_VERSION='0.7.1';
+  const SOBRA_VERSION='0.7.2';
   const SOBRA_RELEASE_ID=document.querySelector('meta[name="sobra-release"]')?.content||'development';
   const RELEASE_CHECK_MS=120000;
   const RELEASE_MIN_CHECK_MS=20000;
@@ -76,17 +78,38 @@
   }
 
   function isLegacyDemo(saved){
-    if(!Array.isArray(saved)||saved.length!==12)return false;
-    const names=new Set(saved.map(t=>t.description));
-    return ['Salário','Adiantamento','Aluguel','Mercado','Internet','Energia','Academia','Cartão','Celular','Transporte','Seguro','Assinaturas'].every(name=>names.has(name));
+    if(!Array.isArray(saved)||!saved.length)return false;
+    const names=new Set(saved.map(t=>String(t.description||'')));
+    const legacy=['Salário','Adiantamento','Aluguel','Mercado','Internet','Energia','Academia','Cartão','Celular','Transporte','Seguro','Assinaturas'];
+    const newDemo=['Salário Luan','Salário Mozi','Rescisão Mozi','Ailos Cons.','Ailos Cartão','Mercado Pago'];
+    const legacyMatches=legacy.filter(name=>names.has(name)).length;
+    const newMatches=newDemo.filter(name=>names.has(name)).length;
+    return legacyMatches>=6&&newMatches===0;
+  }
+
+  function persistDemoSeed(){
+    const seeded=seedTransactions();
+    localStorage.setItem(STORAGE_KEY,JSON.stringify(seeded));
+    localStorage.setItem(DEMO_DATA_KEY,DEMO_DATA_VERSION);
+    localStorage.removeItem(OVERRIDES_KEY);
+    return seeded;
   }
 
   function loadTransactions(){
     try{
       const saved=JSON.parse(localStorage.getItem(STORAGE_KEY)||'null');
-      if(Array.isArray(saved)&&saved.length&&!isLegacyDemo(saved))return saved;
-      return seedTransactions();
-    }catch{return seedTransactions()}
+      const demoVersion=localStorage.getItem(DEMO_DATA_KEY);
+      if(!Array.isArray(saved)||!saved.length)return persistDemoSeed();
+      if(isLegacyDemo(saved))return persistDemoSeed();
+      if(demoVersion===DEMO_DATA_VERSION)return saved;
+      const names=new Set(saved.map(t=>String(t.description||'')));
+      const looksLikeNewDemo=['Salário Luan','Salário Mozi','Rescisão Mozi','Ailos Cons.','Mercado Pago'].filter(name=>names.has(name)).length>=3;
+      if(looksLikeNewDemo){
+        localStorage.setItem(DEMO_DATA_KEY,DEMO_DATA_VERSION);
+        return saved;
+      }
+      return saved;
+    }catch{return persistDemoSeed()}
   }
   function loadOverrides(){
     try{
