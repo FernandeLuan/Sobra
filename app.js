@@ -1,7 +1,8 @@
 (() => {
   const STORAGE_KEY='sobra.transactions.v1';
+  const OVERRIDES_KEY='sobra.occurrences.v1';
   const THEME_KEY='sobra.theme.v1';
-  const SOBRA_VERSION='0.3.0';
+  const SOBRA_VERSION='0.4.0';
   const SOBRA_RELEASE_ID=document.querySelector('meta[name="sobra-release"]')?.content||'development';
   const RELEASE_CHECK_MS=120000;
   const RELEASE_MIN_CHECK_MS=20000;
@@ -39,13 +40,12 @@
   const state={
     page:'home',
     selectedMonth:initialMonth,
-    filter:'all',
-    statusFilter:'all',
-    categoryFilter:'all',
+    accountsTab:'expense',
     search:'',
     calendarDate:null,
     entryType:'expense',
-    transactions:loadTransactions()
+    transactions:loadTransactions(),
+    overrides:loadOverrides()
   };
 
   function seedTransactions(){
@@ -72,9 +72,55 @@
       return Array.isArray(saved)&&saved.length?saved:seedTransactions();
     }catch{return seedTransactions()}
   }
-  function persist(){localStorage.setItem(STORAGE_KEY,JSON.stringify(state.transactions))}
+  function loadOverrides(){
+    try{
+      const saved=JSON.parse(localStorage.getItem(OVERRIDES_KEY)||'{}');
+      return saved&&typeof saved==='object'&&!Array.isArray(saved)?saved:{};
+    }catch{return {}}
+  }
+  function persist(){
+    localStorage.setItem(STORAGE_KEY,JSON.stringify(state.transactions));
+    localStorage.setItem(OVERRIDES_KEY,JSON.stringify(state.overrides));
+  }
   function selectedKey(){return `${state.selectedMonth.getFullYear()}-${pad(state.selectedMonth.getMonth()+1)}`}
-  function monthTransactions(){const key=selectedKey();return state.transactions.filter(t=>String(t.dueDate||t.date||'').startsWith(key))}
+  function monthKeyFromDate(value){return String(value||'').slice(0,7)}
+  function compareMonthKeys(a,b){return String(a).localeCompare(String(b))}
+  function occurrenceOverrideKey(id,key){return `${id}:${key}`}
+  function previousMonthKey(key){
+    const [y,m]=key.split('-').map(Number);
+    const d=new Date(y,m-2,1);
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}`;
+  }
+  function projectedRecurring(t,key){
+    const start=t.recurrenceStart||monthKeyFromDate(t.dueDate);
+    const end=t.recurrenceEnd||null;
+    if(compareMonthKeys(key,start)<0||(end&&compareMonthKeys(key,end)>0))return null;
+    const override=state.overrides[occurrenceOverrideKey(t.id,key)]||{};
+    if(override.skipped)return null;
+    const [y,m]=key.split('-').map(Number);
+    const sourceDay=Number(String(t.dueDate).slice(8,10))||1;
+    const day=Math.min(sourceDay,new Date(y,m,0).getDate());
+    const dueDate=`${key}-${pad(day)}`;
+    const sourceKey=monthKeyFromDate(t.dueDate);
+    const defaultStatus=key===sourceKey?t.status:(t.type==='expense'?'launched':'expected');
+    return {...t,...override,id:`${t.id}@${key}`,dueDate,date:dueDate,status:override.status||defaultStatus,_sourceId:t.id,_occurrenceKey:key};
+  }
+  function monthTransactions(){
+    const key=selectedKey();
+    const rows=[];
+    for(const t of state.transactions){
+      if(t.mode==='recurring'){
+        const projected=projectedRecurring(t,key);
+        if(projected)rows.push(projected);
+      }else if(monthKeyFromDate(t.dueDate||t.date)===key){
+        rows.push(t);
+      }
+    }
+    return rows;
+  }
+  function viewTransaction(id){
+    return monthTransactions().find(t=>t.id===id)||state.transactions.find(t=>t.id===id)||null;
+  }
   function sum(list){return list.reduce((a,t)=>a+Number(t.amount||0),0)}
   function getSummary(){
     const txs=monthTransactions();
@@ -87,6 +133,7 @@
       paid:sum(expenses.filter(t=>t.status==='paid')),
       scheduled:sum(expenses.filter(t=>t.status==='scheduled')),
       launched:sum(expenses.filter(t=>t.status==='launched')),
+      remaining:sum(expenses.filter(t=>t.status!=='paid')),
       percentage:revenue>0?Math.min(100,(expensesTotal/revenue)*100):0
     };
   }
@@ -120,111 +167,115 @@
   function monthSwitcher(){
     return `<div class="month-switcher"><button data-month="-1" aria-label="Mês anterior">‹</button><div class="month-label">${monthFmt.format(state.selectedMonth)}</div><button data-month="1" aria-label="Próximo mês">›</button></div>`;
   }
+  function homeMonthSelector(){
+    return `<div class="balance-month"><button data-month="-1" aria-label="Mês anterior">‹</button><strong>${monthFmt.format(state.selectedMonth)}</strong><button data-month="1" aria-label="Próximo mês">›</button></div>`;
+  }
+  function dueContextLabel(t){
+    const date=new Date(`${t.dueDate}T12:00:00`);
+    const today=new Date();today.setHours(0,0,0,0);
+    const tomorrow=new Date(today);tomorrow.setDate(tomorrow.getDate()+1);
+    const clean=new Date(date);clean.setHours(0,0,0,0);
+    if(clean.getTime()===today.getTime())return'Hoje';
+    if(clean.getTime()===tomorrow.getTime())return'Amanhã';
+    return date.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}).replace('.','');
+  }
+  function upcomingItem(t){
+    return `<button class="upcoming-item" data-open-tx="${t.id}">
+      <span class="due-pill ${isOverdue(t)?'overdue':''}">${dueContextLabel(t)}</span>
+      <span class="tx-title"><strong>${escapeHtml(t.description)}</strong><small>${escapeHtml(t.category)}</small></span>
+      <span class="tx-value"><strong class="expense">− ${money.format(t.amount)}</strong></span>
+    </button>`;
+  }
 
   function renderHome(){
     const s=getSummary();
     const txs=monthTransactions().filter(t=>t.type==='expense').sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
     const upcoming=txs.filter(t=>t.status!=='paid').slice(0,5);
-    return `<section class="page">
-      ${monthSwitcher()}
+    return `<section class="page home-page">
       <div class="balance-card">
-        <p class="balance-label">Sobra prevista</p>
-        <h2 class="balance-value">${money.format(s.sobra)}</h2>
-        <span class="balance-caption">Depois de todas as contas do mês</span>
+        ${homeMonthSelector()}
+        <div class="balance-main">
+          <p class="balance-label">Vai sobrar</p>
+          <h2 class="balance-value">${money.format(s.sobra)}</h2>
+          <span class="balance-caption">depois de todas as contas deste mês</span>
+        </div>
 
         <div class="balance-row">
           <div class="balance-mini"><small>Entradas</small><strong>${money.format(s.revenue)}</strong></div>
-          <div class="balance-mini"><small>Saídas</small><strong>${money.format(s.expensesTotal)}</strong></div>
+          <div class="balance-mini"><small>Contas</small><strong>${money.format(s.expensesTotal)}</strong></div>
         </div>
 
         <div class="balance-commitment">
           <div class="balance-progress"><span style="width:${s.percentage}%"></span></div>
           <div class="balance-commitment-copy">
-            <span>${s.percentage.toFixed(0)}% comprometido</span>
+            <span>${s.percentage.toFixed(0)}% da renda comprometida</span>
             <strong>${money.format(s.sobra)} livres</strong>
           </div>
         </div>
       </div>
 
-      <section class="content-section month-overview">
-        <div class="section-head"><h2>Contas do mês</h2><button data-nav="transactions">Ver todas</button></div>
-        <div class="status-grid">
-          <div class="status-card" data-tone="paid"><span class="status-dot"></span><small>Pagas</small><strong>${money.format(s.paid)}</strong></div>
-          <div class="status-card" data-tone="scheduled"><span class="status-dot"></span><small>Agendadas</small><strong>${money.format(s.scheduled)}</strong></div>
-          <div class="status-card" data-tone="open"><span class="status-dot"></span><small>A pagar</small><strong>${money.format(s.launched)}</strong></div>
+      <section class="content-section payment-focus">
+        <div class="payment-focus-main">
+          <span>Ainda falta pagar</span>
+          <strong>${money.format(s.remaining)}</strong>
         </div>
+        <div class="payment-focus-meta">
+          <span><i class="status-dot paid"></i>Pago ${money.format(s.paid)}</span>
+          <span><i class="status-dot scheduled"></i>Agendado ${money.format(s.scheduled)}</span>
+        </div>
+        <button class="text-action" data-nav="accounts">Ver contas</button>
       </section>
 
       <section class="content-section upcoming-section">
         <div class="section-head"><h2>Próximas contas</h2><button data-nav="calendar">Calendário</button></div>
-        <div class="list-surface transaction-list">${upcoming.length?upcoming.map(txItem).join(''):'<div class="empty-state"><strong>Tudo certo por aqui</strong>Nenhuma conta pendente neste mês.</div>'}</div>
+        <div class="list-surface upcoming-list">${upcoming.length?upcoming.map(upcomingItem).join(''):'<div class="empty-state"><strong>Tudo certo por aqui</strong>Nenhuma conta pendente neste mês.</div>'}</div>
       </section>
     </section>`;
   }
 
-  function filteredTransactions(){
-    let txs=monthTransactions();
-    if(state.filter==='income')txs=txs.filter(t=>t.type==='income');
-    if(state.filter==='expense')txs=txs.filter(t=>t.type==='expense');
-    if(state.statusFilter!=='all'&&state.filter!=='income')txs=txs.filter(t=>t.type==='expense'&&t.status===state.statusFilter);
-    if(state.categoryFilter!=='all')txs=txs.filter(t=>t.category===state.categoryFilter);
-    const q=state.search.trim().toLowerCase();
-    if(q)txs=txs.filter(t=>`${t.description} ${t.category}`.toLowerCase().includes(q));
-    return txs.sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
+  function accountItem(t){
+    const recurring=t.mode==='recurring';
+    const tone=t.type==='income'?'income':'expense';
+    const sign=t.type==='income'?'+':'−';
+    const day=Number(String(t.dueDate).slice(8,10));
+    return `<button class="account-item" data-open-tx="${t.id}">
+      <span class="account-icon ${tone}">${icon(t.type==='income'?'arrowUp':'arrowDown',18)}</span>
+      <span class="account-copy">
+        <strong>${escapeHtml(t.description)}</strong>
+        <small>${escapeHtml(t.category)} · dia ${day}</small>
+      </span>
+      <span class="account-side">
+        <strong class="${tone}">${sign} ${money.format(t.amount)}</strong>
+        <small>${recurring?'Todo mês':'Só este mês'}</small>
+      </span>
+    </button>`;
   }
 
-  function activeSecondaryFilters(){
-    return Number(state.statusFilter!=='all'&&state.filter!=='income')+Number(state.categoryFilter!=='all');
-  }
-
-  function renderTransactions(){
-    const filters=[['all','Todos'],['income','Entradas'],['expense','Saídas']];
-    const txs=filteredTransactions();
-    const extraCount=activeSecondaryFilters();
-    return `<section class="page">
-      ${monthSwitcher()}
-      <div class="search-box"><input id="searchInput" value="${escapeAttr(state.search)}" placeholder="Buscar lançamento"></div>
-      <div class="filter-toolbar">
-        <div class="filters">${filters.map(([id,label])=>`<button class="filter-chip ${state.filter===id?'active':''}" data-filter="${id}">${label}</button>`).join('')}</div>
-        <button class="filter-button ${extraCount?'active':''}" data-open-filters>
-          ${icon('filter',17)}<span>Filtrar</span>${extraCount?`<b>${extraCount}</b>`:''}
-        </button>
-      </div>
-      <div class="list-surface transaction-list">${txs.length?txs.map(txItem).join(''):'<div class="empty-state"><strong>Nenhum lançamento</strong>Tente outro filtro ou crie um novo lançamento.</div>'}</div>
+  function renderAccountGroup(title,rows,empty){
+    return `<section class="account-group">
+      <div class="section-head"><h2>${title}</h2><span></span></div>
+      <div class="list-surface account-list">${rows.length?rows.map(accountItem).join(''):`<div class="empty-state compact">${empty}</div>`}</div>
     </section>`;
   }
 
-  function openTransactionFilters(){
-    const categories=[...new Set(monthTransactions().map(t=>t.category).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
-    openModal(
-      'Filtrar lançamentos',
-      '',
-      `<div class="form-grid">
-        <div class="field"><label>Status das saídas</label><select class="select" id="filterStatus">
-          <option value="all" ${state.statusFilter==='all'?'selected':''}>Todos</option>
-          <option value="launched" ${state.statusFilter==='launched'?'selected':''}>Lançadas</option>
-          <option value="scheduled" ${state.statusFilter==='scheduled'?'selected':''}>Agendadas</option>
-          <option value="paid" ${state.statusFilter==='paid'?'selected':''}>Pagas</option>
-        </select></div>
-        <div class="field"><label>Categoria</label><select class="select" id="filterCategory">
-          <option value="all">Todas as categorias</option>
-          ${categories.map(c=>`<option value="${escapeAttr(c)}" ${state.categoryFilter===c?'selected':''}>${escapeHtml(c)}</option>`).join('')}
-        </select></div>
-      </div>`,
-      '<button class="btn btn-secondary" data-clear-filters>Limpar</button><button class="btn btn-primary" data-apply-filters>Aplicar filtros</button>'
-    );
-  }
-
-  function applyTransactionFilters(){
-    state.statusFilter=document.getElementById('filterStatus')?.value||'all';
-    state.categoryFilter=document.getElementById('filterCategory')?.value||'all';
-    closeModal();render();
-  }
-
-  function clearTransactionFilters(){
-    state.statusFilter='all';
-    state.categoryFilter='all';
-    closeModal();render();
+  function renderAccounts(){
+    const txs=monthTransactions().filter(t=>t.type===state.accountsTab).sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
+    const recurring=txs.filter(t=>t.mode==='recurring');
+    const monthly=txs.filter(t=>t.mode!=='recurring');
+    const isExpense=state.accountsTab==='expense';
+    return `<section class="page accounts-page">
+      ${monthSwitcher()}
+      <div class="account-tabs">
+        <button class="${isExpense?'active':''}" data-account-tab="expense">Contas</button>
+        <button class="${!isExpense?'active':''}" data-account-tab="income">Proventos</button>
+      </div>
+      <div class="accounts-intro">
+        <strong>${isExpense?'O que você precisa pagar':'O que você espera receber'}</strong>
+        <span>${isExpense?'Cadastre contas recorrentes ou somente deste mês.':'Organize salários, rendas recorrentes e valores avulsos.'}</span>
+      </div>
+      ${renderAccountGroup('Recorrentes',recurring,isExpense?'Nenhuma conta recorrente.':'Nenhum provento recorrente.')}
+      ${renderAccountGroup(`Somente em ${monthFmt.format(state.selectedMonth).split(' de ')[0]}`,monthly,isExpense?'Nenhuma conta avulsa neste mês.':'Nenhum provento avulso neste mês.')}
+    </section>`;
   }
 
   function renderCalendar(){
@@ -328,7 +379,7 @@
   function render(){
     const app=document.getElementById('app');
     if(!app)return;
-    app.innerHTML=state.page==='transactions'?renderTransactions():state.page==='calendar'?renderCalendar():state.page==='more'?renderMore():renderHome();
+    app.innerHTML=state.page==='accounts'?renderAccounts():state.page==='calendar'?renderCalendar():state.page==='more'?renderMore():renderHome();
     document.querySelectorAll('.nav-item[data-nav]').forEach(b=>b.classList.toggle('active',b.dataset.nav===state.page));
     window.scrollTo({top:0,behavior:'auto'});
   }
@@ -433,27 +484,44 @@
     const today=(now.getFullYear()===y&&now.getMonth()===m)?Math.min(now.getDate(),28):10;
     return iso(y,m,today);
   }
+  function openAddChoice(){
+    openModal('Adicionar','',
+      `<div class="add-choice-grid">
+        <button class="add-choice expense" data-add-kind="expense">
+          <span class="add-choice-icon">${icon('arrowDown',22)}</span>
+          <strong>Conta</strong>
+          <small>Algo que você precisa pagar</small>
+        </button>
+        <button class="add-choice income" data-add-kind="income">
+          <span class="add-choice-icon">${icon('arrowUp',22)}</span>
+          <strong>Provento</strong>
+          <small>Dinheiro que você espera receber</small>
+        </button>
+      </div>`
+    );
+  }
+
   function openEntryModal(type='expense'){
     state.entryType=type;
-    openModal('Novo lançamento','',
+    const expense=type==='expense';
+    openModal(expense?'Nova conta':'Novo provento','',
       `<div class="form-grid quick-entry-form">
-        <div class="segmented"><button data-entry-type="expense" class="${type==='expense'?'active':''}">Saída</button><button data-entry-type="income" class="${type==='income'?'active':''}">Entrada</button></div>
-
         <div class="entry-amount-field">
           <label>Valor</label>
           <div class="entry-amount-input"><span>R$</span><input id="entryAmount" inputmode="decimal" placeholder="0,00" autocomplete="off"></div>
         </div>
-
-        <div class="field"><label>Descrição</label><input class="input" id="entryDescription" placeholder="Ex.: Internet" autocomplete="off"></div>
-        <div class="field"><label>Data</label><input class="input" id="entryDate" type="date" value="${entryDate()}"></div>
+        <div class="field"><label>${expense?'Nome da conta':'Nome do provento'}</label><input class="input" id="entryDescription" placeholder="${expense?'Ex.: Internet':'Ex.: Salário'}" autocomplete="off"></div>
+        <div class="field"><label>${expense?'Vencimento':'Data prevista'}</label><input class="input" id="entryDate" type="date" value="${entryDate()}"></div>
+        <div class="field"><label>Repetição</label><select class="select" id="entryMode">
+          <option value="single">Somente este mês</option>
+          <option value="recurring">Todo mês</option>
+          <option value="installment">${expense?'Parcelado':'Parcelado'}</option>
+        </select></div>
 
         <details class="advanced-options">
-          <summary>Mais opções <span>Categoria, recorrência e status</span></summary>
+          <summary>Mais opções <span>Categoria, status e observações</span></summary>
           <div class="advanced-options-body">
-            <div class="field-row">
-              <div class="field"><label>Categoria</label><select class="select" id="entryCategory">${['Casa','Alimentação','Transporte','Saúde','Educação','Assinaturas','Lazer','Compras','Contas','Outros','Receitas'].map(c=>`<option>${c}</option>`).join('')}</select></div>
-              <div class="field"><label>Tipo</label><select class="select" id="entryMode"><option value="single">Único</option><option value="recurring">Recorrente</option><option value="installment">Parcelado</option></select></div>
-            </div>
+            <div class="field"><label>Categoria</label><select class="select" id="entryCategory">${['Casa','Alimentação','Transporte','Saúde','Educação','Assinaturas','Lazer','Compras','Contas','Outros','Receitas'].map(c=>`<option>${c}</option>`).join('')}</select></div>
             <div class="field"><label>Status</label><select class="select" id="entryStatus"></select></div>
             <div id="installmentFields"></div>
             <div class="field"><label>Observações</label><textarea class="textarea" id="entryNotes" placeholder="Opcional"></textarea></div>
@@ -494,42 +562,78 @@
       id:uid(),type:state.entryType,description,amount,dueDate,date:dueDate,
       category:document.getElementById('entryCategory').value,
       mode,status:document.getElementById('entryStatus').value,
-      notes:document.getElementById('entryNotes').value.trim()
+      notes:document.getElementById('entryNotes').value.trim(),
+      recurrenceStart:mode==='recurring'?monthKeyFromDate(dueDate):null
     };
     if(mode==='installment'){
       tx.installmentNumber=Number(document.getElementById('installmentNumber')?.value||1);
       tx.installmentTotal=Number(document.getElementById('installmentTotal')?.value||2);
     }
     state.transactions.push(tx);
-    persist();closeModal();render();showToast('Lançamento salvo.');
+    persist();closeModal();render();showToast(state.entryType==='expense'?'Conta salva.':'Provento salvo.');
   }
 
   function openTransaction(id){
-    const t=state.transactions.find(x=>x.id===id);if(!t)return;
+    const t=viewTransaction(id);if(!t)return;
     openModal(escapeHtml(t.description),txMeta(t),
       `<div class="detail-total"><small>${t.type==='income'?'Valor da receita':'Valor do lançamento'}</small><strong>${money.format(t.amount)}</strong></div>
       <div class="detail-grid">
         <div class="detail-card"><small>Status</small><strong>${labelStatus(t)}</strong></div>
         <div class="detail-card"><small>Categoria</small><strong>${escapeHtml(t.category)}</strong></div>
         <div class="detail-card"><small>Data</small><strong>${shortDateFmt.format(new Date(`${t.dueDate}T12:00:00`))}</strong></div>
-        <div class="detail-card"><small>Tipo</small><strong>${t.mode==='recurring'?'Recorrente':t.mode==='installment'?'Parcelado':'Único'}</strong></div>
+        <div class="detail-card"><small>Repetição</small><strong>${t.mode==='recurring'?'Todo mês':t.mode==='installment'?'Parcelado':'Somente este mês'}</strong></div>
       </div>
       ${t.notes?`<div class="detail-card" style="margin-top:9px"><small>Observações</small><strong>${escapeHtml(t.notes)}</strong></div>`:''}
       <div class="detail-actions">
         ${t.type==='expense'&&t.status!=='paid'?`<button class="btn btn-primary" data-mark-paid="${t.id}">Marcar como paga</button>`:''}
         ${t.type==='expense'&&t.status==='launched'?`<button class="btn btn-secondary" data-mark-scheduled="${t.id}">Marcar como agendada</button>`:''}
-        <button class="btn btn-secondary" data-delete-tx="${t.id}">Excluir lançamento</button>
+        <button class="btn btn-secondary" data-delete-tx="${t.id}">Excluir ${t.type==='expense'?'conta':'provento'}</button>
       </div>`,
-      `<button class="btn btn-secondary" data-close-modal>Fechar</button><button class="btn btn-primary" data-duplicate-tx="${t.id}">Duplicar</button>`);
+      '<button class="btn btn-primary" data-close-modal>Fechar</button>');
   }
   function updateTxStatus(id,status){
-    const t=state.transactions.find(x=>x.id===id);if(!t)return;
-    t.status=status;persist();closeModal();render();showToast(status==='paid'?'Pagamento marcado como pago.':'Pagamento marcado como agendado.');
+    const t=viewTransaction(id);if(!t)return;
+    if(t._sourceId){
+      const key=occurrenceOverrideKey(t._sourceId,t._occurrenceKey);
+      state.overrides[key]={...(state.overrides[key]||{}),status};
+    }else{
+      const base=state.transactions.find(x=>x.id===id);
+      if(base)base.status=status;
+    }
+    persist();closeModal();render();showToast(status==='paid'?'Conta marcada como paga.':'Conta marcada como agendada.');
   }
   function deleteTx(id){
+    const t=viewTransaction(id);if(!t)return;
+    if(t._sourceId){
+      openModal(
+        `Excluir ${t.type==='expense'?'conta':'provento'} recorrente`,
+        escapeHtml(t.description),
+        '<div class="info-stack"><p>Escolha se deseja remover apenas este mês ou encerrar a recorrência a partir deste mês.</p></div>',
+        `<button class="btn btn-secondary" data-skip-occurrence="${t.id}">Só este mês</button><button class="btn btn-primary" data-end-recurrence="${t.id}">Deste mês em diante</button>`
+      );
+      return;
+    }
     state.transactions=state.transactions.filter(x=>x.id!==id);
-    persist();closeModal();render();showToast('Lançamento excluído.');
+    persist();closeModal();render();showToast(t.type==='expense'?'Conta excluída.':'Provento excluído.');
   }
+  function skipOccurrence(id){
+    const t=viewTransaction(id);if(!t?._sourceId)return;
+    const key=occurrenceOverrideKey(t._sourceId,t._occurrenceKey);
+    state.overrides[key]={...(state.overrides[key]||{}),skipped:true};
+    persist();closeModal();render();showToast('Removido somente deste mês.');
+  }
+  function endRecurrence(id){
+    const t=viewTransaction(id);if(!t?._sourceId)return;
+    const base=state.transactions.find(x=>x.id===t._sourceId);if(!base)return;
+    const start=base.recurrenceStart||monthKeyFromDate(base.dueDate);
+    if(t._occurrenceKey===start){
+      state.transactions=state.transactions.filter(x=>x.id!==base.id);
+    }else{
+      base.recurrenceEnd=previousMonthKey(t._occurrenceKey);
+    }
+    persist();closeModal();render();showToast('Recorrência encerrada.');
+  }
+
   function duplicateTx(id){
     const t=state.transactions.find(x=>x.id===id);if(!t)return;
     state.transactions.push({...t,id:uid(),description:`${t.description} — cópia`});
@@ -556,7 +660,9 @@
   }
   function resetData(){
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(OVERRIDES_KEY);
     state.transactions=seedTransactions();
+    state.overrides={};
     persist();render();showToast('Dados de demonstração restaurados.');
   }
   function escapeHtml(value=''){return String(value).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
@@ -565,13 +671,11 @@
   document.addEventListener('click',e=>{
     const nav=e.target.closest('[data-nav]');if(nav){navigate(nav.dataset.nav);return}
     const month=e.target.closest('[data-month]');if(month){changeMonth(Number(month.dataset.month));return}
-    const filter=e.target.closest('[data-filter]');if(filter){state.filter=filter.dataset.filter;render();return}
-    if(e.target.closest('[data-open-filters]')){openTransactionFilters();return}
-    if(e.target.closest('[data-apply-filters]')){applyTransactionFilters();return}
-    if(e.target.closest('[data-clear-filters]')){clearTransactionFilters();return}
+    const accountTab=e.target.closest('[data-account-tab]');if(accountTab){state.accountsTab=accountTab.dataset.accountTab;render();return}
     const calendarDay=e.target.closest('[data-calendar-date]');if(calendarDay){state.calendarDate=calendarDay.dataset.calendarDate;render();return}
     const tx=e.target.closest('[data-open-tx]');if(tx){openTransaction(tx.dataset.openTx);return}
-    if(e.target.closest('#newEntryBtn')){openEntryModal('expense');return}
+    if(e.target.closest('#newEntryBtn')){openAddChoice();return}
+    const addKind=e.target.closest('[data-add-kind]');if(addKind){closeModal();openEntryModal(addKind.dataset.addKind);return}
     if(e.target.closest('[data-close-modal]')){closeModal();return}
     const backdrop=e.target.closest('[data-modal-backdrop]');if(backdrop&&e.target===backdrop){closeModal();return}
     const type=e.target.closest('[data-entry-type]');if(type){state.entryType=type.dataset.entryType;updateEntryFields();return}
@@ -579,6 +683,8 @@
     const paid=e.target.closest('[data-mark-paid]');if(paid){updateTxStatus(paid.dataset.markPaid,'paid');return}
     const scheduled=e.target.closest('[data-mark-scheduled]');if(scheduled){updateTxStatus(scheduled.dataset.markScheduled,'scheduled');return}
     const del=e.target.closest('[data-delete-tx]');if(del){deleteTx(del.dataset.deleteTx);return}
+    const skip=e.target.closest('[data-skip-occurrence]');if(skip){skipOccurrence(skip.dataset.skipOccurrence);return}
+    const endRec=e.target.closest('[data-end-recurrence]');if(endRec){endRecurrence(endRec.dataset.endRecurrence);return}
     const dup=e.target.closest('[data-duplicate-tx]');if(dup){duplicateTx(dup.dataset.duplicateTx);return}
     if(e.target.closest('[data-apply-update]')){applyReleaseUpdate();return}
     if(e.target.closest('[data-dismiss-update]')){dismissReleaseUpdate();return}
@@ -587,9 +693,7 @@
     if(e.target.closest('#themeToggle')){toggleTheme();return}
     if(e.target.closest('#resetData')){resetData();closeModal();return}
   });
-  document.addEventListener('input',e=>{
-    if(e.target.id==='searchInput'){state.search=e.target.value;const list=document.querySelector('.transaction-list');if(list){const txs=filteredTransactions();list.innerHTML=txs.length?txs.map(txItem).join(''):'<div class="empty-state"><strong>Nenhum lançamento</strong>Tente outro termo.</div>'}}
-  });
+  document.addEventListener('input',e=>{});
   document.addEventListener('change',e=>{if(e.target.id==='entryMode')updateInstallmentFields()});
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
 
