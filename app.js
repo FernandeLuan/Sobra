@@ -17,6 +17,7 @@
     selectedMonth:initialMonth,
     filter:'all',
     search:'',
+    calendarDate:null,
     entryType:'expense',
     transactions:loadTransactions()
   };
@@ -83,10 +84,11 @@
   }
   function txItem(t){
     const sign=t.type==='income'?'+':'−';
+    const tone=t.type==='income'?'income':'expense';
     return `<button class="transaction-item" data-open-tx="${t.id}">
-      <span class="tx-icon">${t.type==='income'?'↗':'↘'}</span>
+      <span class="tx-icon ${tone}">${t.type==='income'?'↗':'↘'}</span>
       <span class="tx-title"><strong>${escapeHtml(t.description)}</strong><small>${txMeta(t)}</small></span>
-      <span class="tx-value"><strong>${sign} ${money.format(t.amount)}</strong><small class="${statusClass(t)}">${labelStatus(t)}</small></span>
+      <span class="tx-value"><strong class="${tone}">${sign} ${money.format(t.amount)}</strong></span>
     </button>`;
   }
   function monthSwitcher(){
@@ -148,18 +150,59 @@
   }
 
   function renderCalendar(){
+    const y=state.selectedMonth.getFullYear(),m=state.selectedMonth.getMonth();
     const txs=monthTransactions().sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
     const groups=txs.reduce((acc,t)=>{(acc[t.dueDate] ||= []).push(t);return acc},{});
-    const days=Object.entries(groups).map(([date,list])=>{
-      const d=new Date(`${date}T12:00:00`);
-      return `<div class="calendar-day">
-        <div class="calendar-date"><strong>${pad(d.getDate())}</strong><small>${dayFmt.format(d).replace('.','')}</small></div>
-        <div class="calendar-events">${list.map(t=>`<button class="calendar-event" data-open-tx="${t.id}"><span>${escapeHtml(t.description)}</span><strong>${t.type==='income'?'+':'−'} ${money.format(t.amount)}</strong></button>`).join('')}</div>
-      </div>`;
-    }).join('');
+    const firstDay=new Date(y,m,1).getDay();
+    const daysInMonth=new Date(y,m+1,0).getDate();
+    const todayKey=iso(now.getFullYear(),now.getMonth(),now.getDate());
+
+    if(!state.calendarDate||!state.calendarDate.startsWith(selectedKey())){
+      const preferred=(now.getFullYear()===y&&now.getMonth()===m)?todayKey:Object.keys(groups)[0]||iso(y,m,1);
+      state.calendarDate=preferred;
+    }
+
+    const cells=[];
+    for(let i=0;i<firstDay;i++)cells.push('<span class="calendar-cell empty" aria-hidden="true"></span>');
+    for(let day=1;day<=daysInMonth;day++){
+      const date=iso(y,m,day);
+      const list=groups[date]||[];
+      const hasIncome=list.some(t=>t.type==='income');
+      const hasExpense=list.some(t=>t.type==='expense');
+      const selected=state.calendarDate===date;
+      const today=date===todayKey;
+      cells.push(`<button class="calendar-cell ${selected?'selected':''} ${today?'today':''}" data-calendar-date="${date}" aria-label="${day} de ${monthFmt.format(state.selectedMonth)}">
+        <span class="calendar-number">${day}</span>
+        <span class="calendar-dots">
+          ${hasIncome?'<i class="calendar-dot income"></i>':''}
+          ${hasExpense?'<i class="calendar-dot expense"></i>':''}
+        </span>
+      </button>`);
+    }
+
+    const selectedTxs=groups[state.calendarDate]||[];
+    const selectedDate=new Date(`${state.calendarDate}T12:00:00`);
+    const selectedLabel=selectedDate.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'});
+    const selectedList=selectedTxs.length
+      ? selectedTxs.map(txItem).join('')
+      : '<div class="empty-state compact"><strong>Nenhum lançamento</strong>Não há movimentações neste dia.</div>';
+
     return `<section class="page">
       ${monthSwitcher()}
-      <div class="section-card" style="margin-top:0"><div class="calendar-list">${days||'<div class="empty-state"><strong>Sem movimentações</strong>Este mês ainda não tem lançamentos.</div>'}</div></div>
+      <div class="calendar-card">
+        <div class="calendar-weekdays">
+          ${['D','S','T','Q','Q','S','S'].map(d=>`<span>${d}</span>`).join('')}
+        </div>
+        <div class="calendar-grid">${cells.join('')}</div>
+        <div class="calendar-legend">
+          <span><i class="calendar-dot income"></i> Entradas</span>
+          <span><i class="calendar-dot expense"></i> Saídas</span>
+        </div>
+      </div>
+      <div class="section-card calendar-selected">
+        <div class="section-head"><h2>${selectedLabel}</h2><span></span></div>
+        <div class="transaction-list">${selectedList}</div>
+      </div>
     </section>`;
   }
 
@@ -189,6 +232,7 @@
   }
   function changeMonth(delta){
     state.selectedMonth=new Date(state.selectedMonth.getFullYear(),state.selectedMonth.getMonth()+delta,1);
+    state.calendarDate=null;
     render();
   }
 
@@ -323,6 +367,7 @@
     const nav=e.target.closest('[data-nav]');if(nav){navigate(nav.dataset.nav);return}
     const month=e.target.closest('[data-month]');if(month){changeMonth(Number(month.dataset.month));return}
     const filter=e.target.closest('[data-filter]');if(filter){state.filter=filter.dataset.filter;render();return}
+    const calendarDay=e.target.closest('[data-calendar-date]');if(calendarDay){state.calendarDate=calendarDay.dataset.calendarDate;render();return}
     const tx=e.target.closest('[data-open-tx]');if(tx){openTransaction(tx.dataset.openTx);return}
     if(e.target.closest('#newEntryBtn')){openEntryModal('expense');return}
     if(e.target.closest('[data-close-modal]')){closeModal();return}
