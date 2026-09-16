@@ -2,7 +2,7 @@
   const STORAGE_KEY='sobra.transactions.v1';
   const OVERRIDES_KEY='sobra.occurrences.v1';
   const THEME_KEY='sobra.theme.v1';
-  const SOBRA_VERSION='0.4.0';
+  const SOBRA_VERSION='0.5.0';
   const SOBRA_RELEASE_ID=document.querySelector('meta[name="sobra-release"]')?.content||'development';
   const RELEASE_CHECK_MS=120000;
   const RELEASE_MIN_CHECK_MS=20000;
@@ -83,6 +83,8 @@
     localStorage.setItem(OVERRIDES_KEY,JSON.stringify(state.overrides));
   }
   function selectedKey(){return `${state.selectedMonth.getFullYear()}-${pad(state.selectedMonth.getMonth()+1)}`}
+  function currentKey(){return `${now.getFullYear()}-${pad(now.getMonth()+1)}`}
+  function entryMonthKey(){return state.page==='accounts'?currentKey():selectedKey()}
   function monthKeyFromDate(value){return String(value||'').slice(0,7)}
   function compareMonthKeys(a,b){return String(a).localeCompare(String(b))}
   function occurrenceOverrideKey(id,key){return `${id}:${key}`}
@@ -105,21 +107,51 @@
     const defaultStatus=key===sourceKey?t.status:(t.type==='expense'?'launched':'expected');
     return {...t,...override,id:`${t.id}@${key}`,dueDate,date:dueDate,status:override.status||defaultStatus,_sourceId:t.id,_occurrenceKey:key};
   }
-  function monthTransactions(){
-    const key=selectedKey();
+  function monthDistance(fromKey,toKey){
+    const [fy,fm]=fromKey.split('-').map(Number);
+    const [ty,tm]=toKey.split('-').map(Number);
+    return (ty-fy)*12+(tm-fm);
+  }
+  function projectedInstallment(t,key){
+    const sourceKey=monthKeyFromDate(t.dueDate);
+    const delta=monthDistance(sourceKey,key);
+    const startNumber=Number(t.installmentNumber||1);
+    const total=Number(t.installmentTotal||1);
+    const number=startNumber+delta;
+    if(delta<0||number>total)return null;
+    const override=state.overrides[occurrenceOverrideKey(t.id,key)]||{};
+    if(override.skipped)return null;
+    const [y,m]=key.split('-').map(Number);
+    const sourceDay=Number(String(t.dueDate).slice(8,10))||1;
+    const day=Math.min(sourceDay,new Date(y,m,0).getDate());
+    const dueDate=`${key}-${pad(day)}`;
+    const defaultStatus=delta===0?t.status:(t.type==='expense'?'launched':'expected');
+    return {...t,...override,id:`${t.id}@${key}`,dueDate,date:dueDate,status:override.status||defaultStatus,installmentNumber:number,_sourceId:t.id,_occurrenceKey:key};
+  }
+  function transactionsForMonth(key){
     const rows=[];
     for(const t of state.transactions){
       if(t.mode==='recurring'){
-        const projected=projectedRecurring(t,key);
-        if(projected)rows.push(projected);
+        const row=projectedRecurring(t,key);
+        if(row)rows.push(row);
+      }else if(t.mode==='installment'){
+        const row=projectedInstallment(t,key);
+        if(row)rows.push(row);
       }else if(monthKeyFromDate(t.dueDate||t.date)===key){
         rows.push(t);
       }
     }
     return rows;
   }
+  function monthTransactions(){return transactionsForMonth(selectedKey())}
   function viewTransaction(id){
-    return monthTransactions().find(t=>t.id===id)||state.transactions.find(t=>t.id===id)||null;
+    if(String(id).includes('@')){
+      const [sourceId,key]=String(id).split('@');
+      const base=state.transactions.find(t=>t.id===sourceId);
+      if(!base)return null;
+      return base.mode==='recurring'?projectedRecurring(base,key):base.mode==='installment'?projectedInstallment(base,key):null;
+    }
+    return state.transactions.find(t=>t.id===id)||monthTransactions().find(t=>t.id===id)||null;
   }
   function sum(list){return list.reduce((a,t)=>a+Number(t.amount||0),0)}
   function getSummary(){
@@ -144,7 +176,7 @@
   }
   function labelStatus(t){
     if(isOverdue(t))return'Vencida';
-    return ({paid:'Paga',scheduled:'Agendada',launched:'Lançada',received:'Recebida',expected:'Prevista'})[t.status]||t.status;
+    return ({paid:'Paga',scheduled:'Agendada',launched:'A pagar',received:'Recebida',expected:'Prevista'})[t.status]||t.status;
   }
   function statusClass(t){
     if(isOverdue(t))return'status-overdue';
@@ -233,49 +265,110 @@
     </section>`;
   }
 
-  function accountItem(t){
-    const recurring=t.mode==='recurring';
+  function accountItem(t,master=false){
     const tone=t.type==='income'?'income':'expense';
     const sign=t.type==='income'?'+':'−';
     const day=Number(String(t.dueDate).slice(8,10));
-    return `<button class="account-item" data-open-tx="${t.id}">
+    const meta=master
+      ? `${escapeHtml(t.category)} · todo dia ${day}`
+      : `${escapeHtml(t.category)} · ${shortDateFmt.format(new Date(`${t.dueDate}T12:00:00`))}`;
+    const side=master
+      ? (t.valueKind==='variable'?'Valor estimado':'Todo mês')
+      : (t.mode==='installment'?`${t.installmentNumber||1}/${t.installmentTotal||1}`:'Avulso');
+    return `<button class="account-item" ${master?`data-open-master="${t.id}"`:`data-open-tx="${t.id}"`}>
       <span class="account-icon ${tone}">${icon(t.type==='income'?'arrowUp':'arrowDown',18)}</span>
       <span class="account-copy">
         <strong>${escapeHtml(t.description)}</strong>
-        <small>${escapeHtml(t.category)} · dia ${day}</small>
+        <small>${meta}</small>
       </span>
       <span class="account-side">
         <strong class="${tone}">${sign} ${money.format(t.amount)}</strong>
-        <small>${recurring?'Todo mês':'Só este mês'}</small>
+        <small>${side}</small>
       </span>
     </button>`;
   }
 
-  function renderAccountGroup(title,rows,empty){
+  function renderAccountGroup(title,rows,empty,master=false){
     return `<section class="account-group">
       <div class="section-head"><h2>${title}</h2><span></span></div>
-      <div class="list-surface account-list">${rows.length?rows.map(accountItem).join(''):`<div class="empty-state compact">${empty}</div>`}</div>
+      <div class="list-surface account-list">${rows.length?rows.map(t=>accountItem(t,master)).join(''):`<div class="empty-state compact">${empty}</div>`}</div>
     </section>`;
   }
 
   function renderAccounts(){
-    const txs=monthTransactions().filter(t=>t.type===state.accountsTab).sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
-    const recurring=txs.filter(t=>t.mode==='recurring');
-    const monthly=txs.filter(t=>t.mode!=='recurring');
+    const key=currentKey();
+    const currentRows=transactionsForMonth(key).filter(t=>t.type===state.accountsTab);
+    const recurring=state.transactions
+      .filter(t=>t.type===state.accountsTab&&t.mode==='recurring')
+      .filter(t=>!t.recurrenceEnd||compareMonthKeys(t.recurrenceEnd,key)>=0)
+      .sort((a,b)=>Number(String(a.dueDate).slice(8,10))-Number(String(b.dueDate).slice(8,10)));
+    const installments=currentRows.filter(t=>t.mode==='installment').sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
+    const monthly=currentRows.filter(t=>t.mode==='single').sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
     const isExpense=state.accountsTab==='expense';
+    const currentMonth=new Date(now.getFullYear(),now.getMonth(),1);
+    const monthName=monthFmt.format(currentMonth).split(' de ')[0];
     return `<section class="page accounts-page">
-      ${monthSwitcher()}
       <div class="account-tabs">
         <button class="${isExpense?'active':''}" data-account-tab="expense">Contas</button>
         <button class="${!isExpense?'active':''}" data-account-tab="income">Proventos</button>
       </div>
-      <div class="accounts-intro">
-        <strong>${isExpense?'O que você precisa pagar':'O que você espera receber'}</strong>
-        <span>${isExpense?'Cadastre contas recorrentes ou somente deste mês.':'Organize salários, rendas recorrentes e valores avulsos.'}</span>
+      <div class="accounts-intro permanent">
+        <strong>${isExpense?'Seu cadastro de contas':'Seu cadastro de proventos'}</strong>
+        <span>${isExpense?'Cadastre uma vez. As recorrentes entram automaticamente em cada mês.':'Salários e rendas recorrentes aparecem automaticamente nos próximos meses.'}</span>
       </div>
-      ${renderAccountGroup('Recorrentes',recurring,isExpense?'Nenhuma conta recorrente.':'Nenhum provento recorrente.')}
-      ${renderAccountGroup(`Somente em ${monthFmt.format(state.selectedMonth).split(' de ')[0]}`,monthly,isExpense?'Nenhuma conta avulsa neste mês.':'Nenhum provento avulso neste mês.')}
+      ${renderAccountGroup('Recorrentes',recurring,isExpense?'Nenhuma conta recorrente cadastrada.':'Nenhum provento recorrente cadastrado.',true)}
+      ${installments.length?renderAccountGroup('Parcelados',installments,'',false):''}
+      ${renderAccountGroup(`Avulsos de ${monthName}`,monthly,isExpense?'Nenhuma conta avulsa neste mês.':'Nenhum provento avulso neste mês.',false)}
     </section>`;
+  }
+
+  function openMaster(id){
+    const t=state.transactions.find(x=>x.id===id&&x.mode==='recurring');if(!t)return;
+    const day=Number(String(t.dueDate).slice(8,10))||1;
+    openModal(
+      `Editar ${t.type==='expense'?'conta recorrente':'provento recorrente'}`,
+      '',
+      `<div class="form-grid">
+        <div class="field"><label>Nome</label><input class="input" id="masterDescription" value="${escapeAttr(t.description)}"></div>
+        <div class="field-row">
+          <div class="field"><label>Valor base</label><input class="input" id="masterAmount" inputmode="decimal" value="${String(t.amount).replace('.',',')}"></div>
+          <div class="field"><label>Dia do mês</label><input class="input" id="masterDay" type="number" min="1" max="31" value="${day}"></div>
+        </div>
+        <div class="field"><label>Tipo de valor</label><select class="select" id="masterValueKind">
+          <option value="fixed" ${t.valueKind!=='variable'?'selected':''}>Fixo</option>
+          <option value="variable" ${t.valueKind==='variable'?'selected':''}>Estimado / variável</option>
+        </select></div>
+        <div class="field"><label>Categoria</label><select class="select" id="masterCategory">
+          ${['Casa','Alimentação','Transporte','Saúde','Educação','Assinaturas','Lazer','Compras','Contas','Outros','Receitas'].map(c=>`<option ${t.category===c?'selected':''}>${c}</option>`).join('')}
+        </select></div>
+        <button class="danger-link" data-end-master="${t.id}">Encerrar depois deste mês</button>
+      </div>`,
+      `<button class="btn btn-secondary" data-close-modal>Cancelar</button><button class="btn btn-primary" data-save-master="${t.id}">Salvar alterações</button>`
+    );
+  }
+
+  function saveMaster(id){
+    const t=state.transactions.find(x=>x.id===id&&x.mode==='recurring');if(!t)return;
+    const description=document.getElementById('masterDescription')?.value.trim();
+    const amount=parseAmount(document.getElementById('masterAmount')?.value);
+    const day=Math.max(1,Math.min(31,Number(document.getElementById('masterDay')?.value||1)));
+    if(!description||amount<=0){showToast('Preencha nome e valor.');return}
+    const start=t.recurrenceStart||monthKeyFromDate(t.dueDate);
+    const [y,m]=start.split('-').map(Number);
+    const realDay=Math.min(day,new Date(y,m,0).getDate());
+    t.description=description;
+    t.amount=amount;
+    t.dueDate=`${start}-${pad(realDay)}`;
+    t.date=t.dueDate;
+    t.category=document.getElementById('masterCategory')?.value||t.category;
+    t.valueKind=document.getElementById('masterValueKind')?.value||'fixed';
+    persist();closeModal();render();showToast('Cadastro atualizado.');
+  }
+
+  function endMaster(id){
+    const t=state.transactions.find(x=>x.id===id&&x.mode==='recurring');if(!t)return;
+    t.recurrenceEnd=currentKey();
+    persist();closeModal();render();showToast('A recorrência termina após este mês.');
   }
 
   function renderCalendar(){
@@ -337,7 +430,7 @@
 
   function renderMore(){
     const rows=[
-      ['tag','Categorias','Organize seus lançamentos','categories'],
+      ['tag','Categorias','Organize suas contas e proventos','categories'],
       ['palette','Aparência','Tema e preferências visuais','appearance'],
       ['data','Dados e backup','Gerencie os dados do aplicativo','data'],
       ['sliders','Preferências','Comportamento do Sobra','preferences'],
@@ -485,44 +578,57 @@
     return iso(y,m,today);
   }
   function openAddChoice(){
-    openModal('Adicionar','',
-      `<div class="add-choice-grid">
-        <button class="add-choice expense" data-add-kind="expense">
-          <span class="add-choice-icon">${icon('arrowDown',22)}</span>
-          <strong>Conta</strong>
-          <small>Algo que você precisa pagar</small>
+    openModal('Adicionar','Cadastre algo novo na sua vida financeira.',
+      `<div class="add-choice-grid four">
+        <button class="add-choice expense" data-add-kind="expense" data-add-mode="recurring">
+          <span class="add-choice-icon">${icon('arrowDown',22)}</span><strong>Conta recorrente</strong><small>Ex.: aluguel, internet, energia</small>
         </button>
-        <button class="add-choice income" data-add-kind="income">
-          <span class="add-choice-icon">${icon('arrowUp',22)}</span>
-          <strong>Provento</strong>
-          <small>Dinheiro que você espera receber</small>
+        <button class="add-choice expense soft" data-add-kind="expense" data-add-mode="single">
+          <span class="add-choice-icon">${icon('arrowDown',22)}</span><strong>Conta avulsa</strong><small>Algo que acontece só uma vez</small>
+        </button>
+        <button class="add-choice income" data-add-kind="income" data-add-mode="recurring">
+          <span class="add-choice-icon">${icon('arrowUp',22)}</span><strong>Provento recorrente</strong><small>Ex.: salário ou renda mensal</small>
+        </button>
+        <button class="add-choice income soft" data-add-kind="income" data-add-mode="single">
+          <span class="add-choice-icon">${icon('arrowUp',22)}</span><strong>Provento avulso</strong><small>Ex.: freelance ou venda</small>
         </button>
       </div>`
     );
   }
 
-  function openEntryModal(type='expense'){
+  function entryTimingMarkup(mode,type){
+    if(mode==='recurring'){
+      return `<div class="field-row">
+        <div class="field"><label>${type==='expense'?'Vence todo dia':'Recebe todo dia'}</label><input class="input" id="entryDay" type="number" min="1" max="31" value="${Math.min(now.getDate(),28)}"></div>
+        <div class="field"><label>Começa em</label><input class="input" id="entryStartMonth" type="month" value="${entryMonthKey()}"></div>
+      </div>`;
+    }
+    return `<div class="field"><label>${type==='expense'?'Vencimento':'Data prevista'}</label><input class="input" id="entryDate" type="date" value="${entryDate()}"></div>`;
+  }
+
+  function openEntryModal(type='expense',presetMode='recurring'){
     state.entryType=type;
     const expense=type==='expense';
     openModal(expense?'Nova conta':'Novo provento','',
       `<div class="form-grid quick-entry-form">
         <div class="entry-amount-field">
-          <label>Valor</label>
+          <label>${presetMode==='recurring'?'Valor base':'Valor'}</label>
           <div class="entry-amount-input"><span>R$</span><input id="entryAmount" inputmode="decimal" placeholder="0,00" autocomplete="off"></div>
         </div>
         <div class="field"><label>${expense?'Nome da conta':'Nome do provento'}</label><input class="input" id="entryDescription" placeholder="${expense?'Ex.: Internet':'Ex.: Salário'}" autocomplete="off"></div>
-        <div class="field"><label>${expense?'Vencimento':'Data prevista'}</label><input class="input" id="entryDate" type="date" value="${entryDate()}"></div>
         <div class="field"><label>Repetição</label><select class="select" id="entryMode">
-          <option value="single">Somente este mês</option>
-          <option value="recurring">Todo mês</option>
-          <option value="installment">${expense?'Parcelado':'Parcelado'}</option>
+          <option value="recurring" ${presetMode==='recurring'?'selected':''}>Todo mês</option>
+          <option value="single" ${presetMode==='single'?'selected':''}>Somente uma vez</option>
+          ${expense?'<option value="installment">Parcelado</option>':''}
         </select></div>
+        <div id="entryTimingFields">${entryTimingMarkup(presetMode,type)}</div>
 
         <details class="advanced-options">
-          <summary>Mais opções <span>Categoria, status e observações</span></summary>
+          <summary>Mais opções <span>Categoria, tipo de valor, status e observações</span></summary>
           <div class="advanced-options-body">
             <div class="field"><label>Categoria</label><select class="select" id="entryCategory">${['Casa','Alimentação','Transporte','Saúde','Educação','Assinaturas','Lazer','Compras','Contas','Outros','Receitas'].map(c=>`<option>${c}</option>`).join('')}</select></div>
-            <div class="field"><label>Status</label><select class="select" id="entryStatus"></select></div>
+            <div class="field" id="valueKindField"><label>Tipo de valor</label><select class="select" id="entryValueKind"><option value="fixed">Fixo</option><option value="variable">Estimado / variável</option></select></div>
+            <div class="field" id="statusField"><label>Status deste mês</label><select class="select" id="entryStatus"></select></div>
             <div id="installmentFields"></div>
             <div class="field"><label>Observações</label><textarea class="textarea" id="entryNotes" placeholder="Opcional"></textarea></div>
           </div>
@@ -530,7 +636,24 @@
       </div>`,
       '<button class="btn btn-secondary" data-close-modal>Cancelar</button><button class="btn btn-primary" id="saveEntry">Salvar</button>');
     updateEntryFields();
+    updateModeFields();
     setTimeout(()=>document.getElementById('entryAmount')?.focus(),80);
+  }
+
+  function updateTimingFields(){
+    const root=document.getElementById('entryTimingFields');
+    const mode=document.getElementById('entryMode')?.value;
+    if(root&&mode)root.innerHTML=entryTimingMarkup(mode,state.entryType);
+  }
+
+  function updateModeFields(){
+    const mode=document.getElementById('entryMode')?.value||'single';
+    const valueKind=document.getElementById('valueKindField');
+    const status=document.getElementById('statusField');
+    if(valueKind)valueKind.hidden=mode!=='recurring';
+    if(status)status.hidden=mode==='recurring';
+    updateTimingFields();
+    updateInstallmentFields();
   }
 
   function updateEntryFields(){
@@ -538,7 +661,7 @@
     const category=document.getElementById('entryCategory');
     if(!status)return;
     status.innerHTML=state.entryType==='expense'
-      ?'<option value="launched">Lançada</option><option value="scheduled">Agendada</option><option value="paid">Paga</option>'
+      ?'<option value="launched">A pagar</option><option value="scheduled">Agendada</option><option value="paid">Paga</option>'
       :'<option value="expected">Prevista</option><option value="received">Recebida</option>';
     if(category&&state.entryType==='income')category.value='Receitas';
     if(category&&state.entryType==='expense'&&category.value==='Receitas')category.value='Casa';
@@ -548,29 +671,39 @@
     const root=document.getElementById('installmentFields');
     if(!root)return;
     root.innerHTML=document.getElementById('entryMode')?.value==='installment'
-      ?'<div class="field-row"><div class="field"><label>Parcela atual</label><input class="input" id="installmentNumber" type="number" min="1" value="1"></div><div class="field"><label>Total de parcelas</label><input class="input" id="installmentTotal" type="number" min="2" value="2"></div></div>'
+      ?'<div class="field"><label>Total de parcelas</label><input class="input" id="installmentTotal" type="number" min="2" value="2"></div>'
       :'';
   }
   function parseAmount(raw){return Number(String(raw).replace(/\./g,'').replace(',','.'))||0}
   function saveEntry(){
     const description=document.getElementById('entryDescription')?.value.trim();
     const amount=parseAmount(document.getElementById('entryAmount')?.value);
-    const dueDate=document.getElementById('entryDate')?.value;
-    if(!description||amount<=0||!dueDate){showToast('Preencha descrição, valor e data.');return}
-    const mode=document.getElementById('entryMode').value;
+    const mode=document.getElementById('entryMode')?.value||'single';
+    let dueDate='';
+    if(mode==='recurring'){
+      const startMonth=document.getElementById('entryStartMonth')?.value||entryMonthKey();
+      const day=Math.max(1,Math.min(31,Number(document.getElementById('entryDay')?.value||1)));
+      const [y,m]=startMonth.split('-').map(Number);
+      dueDate=`${startMonth}-${pad(Math.min(day,new Date(y,m,0).getDate()))}`;
+    }else{
+      dueDate=document.getElementById('entryDate')?.value||'';
+    }
+    if(!description||amount<=0||!dueDate){showToast('Preencha nome, valor e data.');return}
     const tx={
       id:uid(),type:state.entryType,description,amount,dueDate,date:dueDate,
-      category:document.getElementById('entryCategory').value,
-      mode,status:document.getElementById('entryStatus').value,
-      notes:document.getElementById('entryNotes').value.trim(),
-      recurrenceStart:mode==='recurring'?monthKeyFromDate(dueDate):null
+      category:document.getElementById('entryCategory')?.value||(state.entryType==='income'?'Receitas':'Outros'),
+      mode,
+      status:mode==='recurring'?(state.entryType==='expense'?'launched':'expected'):(document.getElementById('entryStatus')?.value||(state.entryType==='expense'?'launched':'expected')),
+      notes:document.getElementById('entryNotes')?.value.trim()||'',
+      recurrenceStart:mode==='recurring'?monthKeyFromDate(dueDate):null,
+      valueKind:mode==='recurring'?(document.getElementById('entryValueKind')?.value||'fixed'):null
     };
     if(mode==='installment'){
-      tx.installmentNumber=Number(document.getElementById('installmentNumber')?.value||1);
+      tx.installmentNumber=1;
       tx.installmentTotal=Number(document.getElementById('installmentTotal')?.value||2);
     }
     state.transactions.push(tx);
-    persist();closeModal();render();showToast(state.entryType==='expense'?'Conta salva.':'Provento salvo.');
+    persist();closeModal();render();showToast(state.entryType==='expense'?'Conta cadastrada.':'Provento cadastrado.');
   }
 
   function openTransaction(id){
@@ -587,10 +720,29 @@
       <div class="detail-actions">
         ${t.type==='expense'&&t.status!=='paid'?`<button class="btn btn-primary" data-mark-paid="${t.id}">Marcar como paga</button>`:''}
         ${t.type==='expense'&&t.status==='launched'?`<button class="btn btn-secondary" data-mark-scheduled="${t.id}">Marcar como agendada</button>`:''}
+        ${t._sourceId&&t.mode==='recurring'?`<button class="btn btn-secondary" data-adjust-occurrence="${t.id}">Ajustar valor deste mês</button>`:''}
         <button class="btn btn-secondary" data-delete-tx="${t.id}">Excluir ${t.type==='expense'?'conta':'provento'}</button>
       </div>`,
       '<button class="btn btn-primary" data-close-modal>Fechar</button>');
   }
+  function openOccurrenceValueEditor(id){
+    const t=viewTransaction(id);if(!t?._sourceId)return;
+    openModal(
+      'Ajustar valor deste mês',
+      escapeHtml(t.description),
+      `<div class="form-grid"><div class="field"><label>Valor neste mês</label><input class="input" id="occurrenceAmount" inputmode="decimal" value="${String(t.amount).replace('.',',')}"></div><p class="helper">O valor base da conta recorrente não será alterado.</p></div>`,
+      `<button class="btn btn-secondary" data-close-modal>Cancelar</button><button class="btn btn-primary" data-save-occurrence="${t.id}">Salvar</button>`
+    );
+  }
+  function saveOccurrenceValue(id){
+    const t=viewTransaction(id);if(!t?._sourceId)return;
+    const amount=parseAmount(document.getElementById('occurrenceAmount')?.value);
+    if(amount<=0){showToast('Informe um valor válido.');return}
+    const key=occurrenceOverrideKey(t._sourceId,t._occurrenceKey);
+    state.overrides[key]={...(state.overrides[key]||{}),amount};
+    persist();closeModal();render();showToast('Valor ajustado somente neste mês.');
+  }
+
   function updateTxStatus(id,status){
     const t=viewTransaction(id);if(!t)return;
     if(t._sourceId){
@@ -672,14 +824,19 @@
     const nav=e.target.closest('[data-nav]');if(nav){navigate(nav.dataset.nav);return}
     const month=e.target.closest('[data-month]');if(month){changeMonth(Number(month.dataset.month));return}
     const accountTab=e.target.closest('[data-account-tab]');if(accountTab){state.accountsTab=accountTab.dataset.accountTab;render();return}
+    const master=e.target.closest('[data-open-master]');if(master){openMaster(master.dataset.openMaster);return}
     const calendarDay=e.target.closest('[data-calendar-date]');if(calendarDay){state.calendarDate=calendarDay.dataset.calendarDate;render();return}
     const tx=e.target.closest('[data-open-tx]');if(tx){openTransaction(tx.dataset.openTx);return}
     if(e.target.closest('#newEntryBtn')){openAddChoice();return}
-    const addKind=e.target.closest('[data-add-kind]');if(addKind){closeModal();openEntryModal(addKind.dataset.addKind);return}
+    const addKind=e.target.closest('[data-add-kind]');if(addKind){closeModal();openEntryModal(addKind.dataset.addKind,addKind.dataset.addMode||'recurring');return}
     if(e.target.closest('[data-close-modal]')){closeModal();return}
     const backdrop=e.target.closest('[data-modal-backdrop]');if(backdrop&&e.target===backdrop){closeModal();return}
     const type=e.target.closest('[data-entry-type]');if(type){state.entryType=type.dataset.entryType;updateEntryFields();return}
     if(e.target.closest('#saveEntry')){saveEntry();return}
+    const saveMasterBtn=e.target.closest('[data-save-master]');if(saveMasterBtn){saveMaster(saveMasterBtn.dataset.saveMaster);return}
+    const endMasterBtn=e.target.closest('[data-end-master]');if(endMasterBtn){endMaster(endMasterBtn.dataset.endMaster);return}
+    const adjust=e.target.closest('[data-adjust-occurrence]');if(adjust){openOccurrenceValueEditor(adjust.dataset.adjustOccurrence);return}
+    const saveOccurrence=e.target.closest('[data-save-occurrence]');if(saveOccurrence){saveOccurrenceValue(saveOccurrence.dataset.saveOccurrence);return}
     const paid=e.target.closest('[data-mark-paid]');if(paid){updateTxStatus(paid.dataset.markPaid,'paid');return}
     const scheduled=e.target.closest('[data-mark-scheduled]');if(scheduled){updateTxStatus(scheduled.dataset.markScheduled,'scheduled');return}
     const del=e.target.closest('[data-delete-tx]');if(del){deleteTx(del.dataset.deleteTx);return}
@@ -694,7 +851,7 @@
     if(e.target.closest('#resetData')){resetData();closeModal();return}
   });
   document.addEventListener('input',e=>{});
-  document.addEventListener('change',e=>{if(e.target.id==='entryMode')updateInstallmentFields()});
+  document.addEventListener('change',e=>{if(e.target.id==='entryMode')updateModeFields()});
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
 
   restoreTheme();
