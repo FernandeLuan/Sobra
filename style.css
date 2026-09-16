@@ -932,3 +932,118 @@ body{font-size:16px}
   .add-choice-grid.four{grid-template-columns:1fr}
   .add-choice-grid.four .add-choice{min-height:102px}
 }
+
+
+/* =========================================================
+   Sobra 0.6.0 — monthly payment control
+   ========================================================= */
+.bottom-nav{
+  grid-template-columns:repeat(4,1fr);
+  height:calc(70px + env(safe-area-inset-bottom));
+  padding-left:10px;padding-right:10px
+}
+.nav-item{min-height:54px}
+.fab{display:none!important}
+
+.payment-status-section{margin-top:15px}
+.payment-status-grid{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px
+}
+.payment-status-card{
+  min-width:0;padding:12px 10px;border:1px solid var(--border);border-radius:13px;
+  background:var(--surface)
+}
+.payment-status-card .status-dot{
+  width:8px;height:8px;margin:0 0 9px;border-radius:50%
+}
+.payment-status-card small{
+  display:block;color:var(--muted);font-size:.74rem;font-weight:700
+}
+.payment-status-card strong{
+  display:block;margin-top:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-size:.94rem;letter-spacing:-.02em
+}
+.payment-status-card.launched .status-dot{background:var(--primary)}
+.payment-status-card.scheduled .status-dot{background:var(--warning)}
+.payment-status-card.paid .status-dot{background:var(--positive)}
+.payment-status-card.launched strong{color:var(--text)}
+.payment-status-card.scheduled strong{color:var(--warning)}
+.payment-status-card.paid strong{color:var(--positive)}
+
+.month-control-list{padding:0 12px}
+.month-control-item{
+  width:100%;min-height:68px;padding:10px 0;border:0;border-bottom:1px solid var(--border);
+  background:transparent;color:var(--text);
+  display:grid;grid-template-columns:58px minmax(0,1fr) auto;gap:10px;align-items:center;text-align:left
+}
+.month-control-item:last-child{border-bottom:0}
+.month-control-date{
+  min-height:32px;padding:6px 7px;border-radius:9px;display:grid;place-items:center;
+  background:var(--surface-2);color:var(--muted);font-size:.69rem;font-weight:800;text-align:center
+}
+.month-control-side{text-align:right;min-width:105px}
+.month-control-side strong{display:block;font-size:.91rem}
+.month-control-side small{
+  display:inline-block;margin-top:4px;padding:3px 6px;border-radius:999px;
+  font-size:.67rem;font-weight:800
+}
+.month-control-side small.launched{
+  background:color-mix(in srgb,var(--primary) 9%,transparent);color:var(--primary)
+}
+.month-control-side small.scheduled{
+  background:color-mix(in srgb,var(--warning) 11%,transparent);color:var(--warning)
+}
+.month-control-side small.paid{
+  background:color-mix(in srgb,var(--positive) 10%,transparent);color:var(--positive)
+}
+
+.status-control{
+  margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:13px;background:var(--bg)
+}
+.status-control>span{
+  display:block;margin-bottom:8px;color:var(--muted);font-size:.76rem;font-weight:800
+}
+.status-control-grid{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px
+}
+.status-control-grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.status-control-grid button{
+  min-height:42px;padding:8px 7px;border:1px solid var(--border);border-radius:10px;
+  background:var(--surface);color:var(--muted);font-size:.76rem;font-weight:800
+}
+.status-control-grid button.active.launched{
+  border-color:color-mix(in srgb,var(--primary) 45%,var(--border));
+  background:color-mix(in srgb,var(--primary) 9%,var(--surface));color:var(--primary)
+}
+.status-control-grid button.active.scheduled{
+  border-color:color-mix(in srgb,var(--warning) 45%,var(--border));
+  background:color-mix(in srgb,var(--warning) 10%,var(--surface));color:var(--warning)
+}
+.status-control-grid button.active.paid{
+  border-color:color-mix(in srgb,var(--positive) 45%,var(--border));
+  background:color-mix(in srgb,var(--positive) 9%,var(--surface));color:var(--positive)
+}
+
+.accounts-intro.permanent{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:12px
+}
+.accounts-intro-copy{min-width:0;flex:1}
+.account-add-action{
+  flex:0 0 auto;min-height:40px;padding:8px 11px;border:0;border-radius:11px;
+  background:var(--primary);color:#fff;font-size:.78rem;font-weight:800
+}
+.account-group .section-head button{
+  min-height:34px;padding:4px 2px;border:0;background:transparent;
+  color:var(--primary);font-size:.78rem;font-weight:800
+}
+
+@media(max-width:390px){
+  .payment-status-grid{gap:6px}
+  .payment-status-card{padding:11px 8px}
+  .payment-status-card small{font-size:.68rem}
+  .payment-status-card strong{font-size:.85rem}
+  .month-control-item{grid-template-columns:54px minmax(0,1fr)}
+  .month-control-side{grid-column:2;text-align:left;min-width:0;margin-top:-4px}
+  .accounts-intro.permanent{display:block}
+  .account-add-action{margin-top:10px;width:100%}
+}
