@@ -16,6 +16,23 @@
   const pad=n=>String(n).padStart(2,'0');
   const iso=(y,m,d)=>`${y}-${pad(m+1)}-${pad(d)}`;
 
+  function icon(name,size=20){
+    const icons={
+      arrowUp:'<path d="M7 17 17 7M9 7h8v8"/>',
+      arrowDown:'<path d="m7 7 10 10M17 9v8H9"/>',
+      filter:'<path d="M4 6h16M7 12h10M10 18h4"/>',
+      tag:'<path d="M20 13 13 20 4 11V4h7l9 9Z"/><circle cx="8.5" cy="8.5" r="1.2"/>',
+      palette:'<path d="M12 3a9 9 0 1 0 0 18h1.5a2.5 2.5 0 0 0 0-5H12a1 1 0 0 1 0-2h2a7 7 0 0 0-2-11Z"/><circle cx="7.5" cy="10" r="1"/><circle cx="9" cy="6.5" r="1"/><circle cx="14" cy="6.5" r="1"/><circle cx="17" cy="10" r="1"/>',
+      data:'<ellipse cx="12" cy="5" rx="7" ry="3"/><path d="M5 5v6c0 1.7 3.1 3 7 3s7-1.3 7-3V5M5 11v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/>',
+      sliders:'<path d="M4 7h10M18 7h2M4 17h2M10 17h10M14 4v6M8 14v6"/>',
+      info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/>',
+      chevron:'<path d="m9 18 6-6-6-6"/>',
+      sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>',
+      moon:'<path d="M20 15.2A8.5 8.5 0 0 1 8.8 4 8.5 8.5 0 1 0 20 15.2Z"/>'
+    };
+    return `<svg class="app-icon" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name]||''}</svg>`;
+  }
+
   const now=new Date();
   const initialMonth=new Date(now.getFullYear(),now.getMonth(),1);
 
@@ -23,6 +40,8 @@
     page:'home',
     selectedMonth:initialMonth,
     filter:'all',
+    statusFilter:'all',
+    categoryFilter:'all',
     search:'',
     calendarDate:null,
     entryType:'expense',
@@ -86,14 +105,14 @@
   }
   function txMeta(t){
     const date=shortDateFmt.format(new Date(`${t.dueDate}T12:00:00`));
-    const mode=t.mode==='recurring'?'Recorrente':t.mode==='installment'?`${t.installmentNumber||1}/${t.installmentTotal||1}`:'Único';
-    return `${escapeHtml(t.category)} · ${date} · ${mode}`;
+    const installment=t.mode==='installment'?` · ${t.installmentNumber||1}/${t.installmentTotal||1}`:'';
+    return `${escapeHtml(t.category)} · ${date}${installment}`;
   }
   function txItem(t){
     const sign=t.type==='income'?'+':'−';
     const tone=t.type==='income'?'income':'expense';
     return `<button class="transaction-item" data-open-tx="${t.id}">
-      <span class="tx-icon ${tone}">${t.type==='income'?'↗':'↘'}</span>
+      <span class="tx-icon ${tone}">${icon(t.type==='income'?'arrowUp':'arrowDown',18)}</span>
       <span class="tx-title"><strong>${escapeHtml(t.description)}</strong><small>${txMeta(t)}</small></span>
       <span class="tx-value"><strong class="${tone}">${sign} ${money.format(t.amount)}</strong></span>
     </button>`;
@@ -111,49 +130,101 @@
       <div class="balance-card">
         <p class="balance-label">Sobra prevista</p>
         <h2 class="balance-value">${money.format(s.sobra)}</h2>
-        <span class="balance-caption">Depois de considerar todas as contas deste mês</span>
+        <span class="balance-caption">Depois de todas as contas do mês</span>
+
         <div class="balance-row">
-          <div class="balance-mini"><small>Receitas</small><strong>${money.format(s.revenue)}</strong></div>
-          <div class="balance-mini"><small>Despesas</small><strong>${money.format(s.expensesTotal)}</strong></div>
+          <div class="balance-mini"><small>Entradas</small><strong>${money.format(s.revenue)}</strong></div>
+          <div class="balance-mini"><small>Saídas</small><strong>${money.format(s.expensesTotal)}</strong></div>
+        </div>
+
+        <div class="balance-commitment">
+          <div class="balance-progress"><span style="width:${s.percentage}%"></span></div>
+          <div class="balance-commitment-copy">
+            <span>${s.percentage.toFixed(0)}% comprometido</span>
+            <strong>${money.format(s.sobra)} livres</strong>
+          </div>
         </div>
       </div>
-      <div class="section-card">
-        <div class="section-head"><h2>Visão de ${monthFmt.format(state.selectedMonth).split(' de ')[0]}</h2><span></span></div>
-        <div class="progress-track"><div class="progress-fill" style="width:${s.percentage}%"></div></div>
-        <div class="progress-copy"><span>${s.percentage.toFixed(0)}% da renda comprometida</span><strong>Restam ${money.format(s.sobra)}</strong></div>
-      </div>
-      <div class="section-card">
+
+      <section class="content-section month-overview">
         <div class="section-head"><h2>Contas do mês</h2><button data-nav="transactions">Ver todas</button></div>
         <div class="status-grid">
           <div class="status-card" data-tone="paid"><span class="status-dot"></span><small>Pagas</small><strong>${money.format(s.paid)}</strong></div>
           <div class="status-card" data-tone="scheduled"><span class="status-dot"></span><small>Agendadas</small><strong>${money.format(s.scheduled)}</strong></div>
-          <div class="status-card" data-tone="launched"><span class="status-dot"></span><small>A pagar</small><strong>${money.format(s.launched)}</strong></div>
+          <div class="status-card" data-tone="open"><span class="status-dot"></span><small>A pagar</small><strong>${money.format(s.launched)}</strong></div>
         </div>
-      </div>
-      <div class="section-card">
+      </section>
+
+      <section class="content-section upcoming-section">
         <div class="section-head"><h2>Próximas contas</h2><button data-nav="calendar">Calendário</button></div>
-        <div class="transaction-list">${upcoming.length?upcoming.map(txItem).join(''):'<div class="empty-state"><strong>Tudo certo por aqui</strong>Nenhuma conta pendente neste mês.</div>'}</div>
-      </div>
+        <div class="list-surface transaction-list">${upcoming.length?upcoming.map(txItem).join(''):'<div class="empty-state"><strong>Tudo certo por aqui</strong>Nenhuma conta pendente neste mês.</div>'}</div>
+      </section>
     </section>`;
   }
 
   function filteredTransactions(){
     let txs=monthTransactions();
     if(state.filter==='income')txs=txs.filter(t=>t.type==='income');
-    if(['launched','scheduled','paid'].includes(state.filter))txs=txs.filter(t=>t.type==='expense'&&t.status===state.filter);
+    if(state.filter==='expense')txs=txs.filter(t=>t.type==='expense');
+    if(state.statusFilter!=='all')txs=txs.filter(t=>t.type==='expense'&&t.status===state.statusFilter);
+    if(state.categoryFilter!=='all')txs=txs.filter(t=>t.category===state.categoryFilter);
     const q=state.search.trim().toLowerCase();
     if(q)txs=txs.filter(t=>`${t.description} ${t.category}`.toLowerCase().includes(q));
     return txs.sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
   }
+
+  function activeSecondaryFilters(){
+    return Number(state.statusFilter!=='all')+Number(state.categoryFilter!=='all');
+  }
+
   function renderTransactions(){
-    const filters=[['all','Todos'],['launched','Lançados'],['scheduled','Agendados'],['paid','Pagos'],['income','Receitas']];
+    const filters=[['all','Todos'],['income','Entradas'],['expense','Saídas']];
     const txs=filteredTransactions();
+    const extraCount=activeSecondaryFilters();
     return `<section class="page">
       ${monthSwitcher()}
-      <div class="search-box"><input id="searchInput" value="${escapeAttr(state.search)}" placeholder="Buscar lançamento ou categoria"></div>
-      <div class="filters">${filters.map(([id,label])=>`<button class="filter-chip ${state.filter===id?'active':''}" data-filter="${id}">${label}</button>`).join('')}</div>
-      <div class="section-card" style="margin-top:0"><div class="transaction-list">${txs.length?txs.map(txItem).join(''):'<div class="empty-state"><strong>Nenhum lançamento</strong>Tente outro filtro ou crie um novo lançamento.</div>'}</div></div>
+      <div class="search-box"><input id="searchInput" value="${escapeAttr(state.search)}" placeholder="Buscar lançamento"></div>
+      <div class="filter-toolbar">
+        <div class="filters">${filters.map(([id,label])=>`<button class="filter-chip ${state.filter===id?'active':''}" data-filter="${id}">${label}</button>`).join('')}</div>
+        <button class="filter-button ${extraCount?'active':''}" data-open-filters>
+          ${icon('filter',17)}<span>Filtrar</span>${extraCount?`<b>${extraCount}</b>`:''}
+        </button>
+      </div>
+      <div class="list-surface transaction-list">${txs.length?txs.map(txItem).join(''):'<div class="empty-state"><strong>Nenhum lançamento</strong>Tente outro filtro ou crie um novo lançamento.</div>'}</div>
     </section>`;
+  }
+
+  function openTransactionFilters(){
+    const categories=[...new Set(monthTransactions().map(t=>t.category).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+    openModal(
+      'Filtrar lançamentos',
+      '',
+      `<div class="form-grid">
+        <div class="field"><label>Status das saídas</label><select class="select" id="filterStatus">
+          <option value="all" ${state.statusFilter==='all'?'selected':''}>Todos</option>
+          <option value="launched" ${state.statusFilter==='launched'?'selected':''}>Lançadas</option>
+          <option value="scheduled" ${state.statusFilter==='scheduled'?'selected':''}>Agendadas</option>
+          <option value="paid" ${state.statusFilter==='paid'?'selected':''}>Pagas</option>
+        </select></div>
+        <div class="field"><label>Categoria</label><select class="select" id="filterCategory">
+          <option value="all">Todas as categorias</option>
+          ${categories.map(c=>`<option value="${escapeAttr(c)}" ${state.categoryFilter===c?'selected':''}>${escapeHtml(c)}</option>`).join('')}
+        </select></div>
+      </div>`,
+      '<button class="btn btn-secondary" data-clear-filters>Limpar</button><button class="btn btn-primary" data-apply-filters>Aplicar filtros</button>'
+    );
+  }
+
+  function applyTransactionFilters(){
+    state.statusFilter=document.getElementById('filterStatus')?.value||'all';
+    state.categoryFilter=document.getElementById('filterCategory')?.value||'all';
+    closeModal();render();
+  }
+
+  function clearTransactionFilters(){
+    state.statusFilter='all';
+    state.categoryFilter='all';
+    closeModal();render();
   }
 
   function renderCalendar(){
@@ -214,15 +285,44 @@
   }
 
   function renderMore(){
+    const rows=[
+      ['tag','Categorias','Organize seus lançamentos','categories'],
+      ['palette','Aparência','Tema e preferências visuais','appearance'],
+      ['data','Dados e backup','Gerencie os dados do aplicativo','data'],
+      ['sliders','Preferências','Comportamento do Sobra','preferences'],
+      ['info','Sobre o Sobra',`Versão ${SOBRA_VERSION}`,'about']
+    ];
     return `<section class="page">
-      <div class="more-grid">
-        <button class="more-item" id="themeMenu"><span><strong>Tema</strong><small>Alternar entre modo claro e escuro</small></span><span>›</span></button>
-        <button class="more-item" id="resetData"><span><strong>Restaurar demonstração</strong><small>Voltar aos dados fictícios originais</small></span><span>›</span></button>
-        <div class="more-item"><span><strong>Armazenamento local</strong><small>Nesta fase os dados ficam somente neste navegador</small></span><span>Local</span></div>
-        <div class="more-item"><span><strong>Firebase</strong><small>Será conectado depois da validação visual</small></span><span>Em breve</span></div>
-        <div class="more-item"><span><strong>Versão</strong><small>Atualizações verificadas automaticamente</small></span><span>${SOBRA_VERSION}</span></div>
-      </div>
+      <div class="settings-list">${rows.map(([ico,title,subtitle,action])=>`
+        <button class="settings-row" data-more-action="${action}">
+          <span class="settings-icon">${icon(ico,20)}</span>
+          <span class="settings-copy"><strong>${title}</strong><small>${subtitle}</small></span>
+          <span class="settings-chevron">${icon('chevron',18)}</span>
+        </button>`).join('')}</div>
     </section>`;
+  }
+
+  function openMoreAction(action){
+    if(action==='appearance'){
+      openModal('Aparência','',
+        `<div class="settings-modal-row"><span>Modo escuro</span><button class="btn btn-secondary" data-toggle-theme>${document.body.classList.contains('dark')?'Desativar':'Ativar'}</button></div>`,
+        '<button class="btn btn-primary" data-close-modal>Concluir</button>');
+      return;
+    }
+    if(action==='categories'){
+      const cats=[...new Set(state.transactions.map(t=>t.category).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+      openModal('Categorias','',`<div class="category-list">${cats.map(c=>`<span>${escapeHtml(c)}</span>`).join('')}</div>`,'<button class="btn btn-primary" data-close-modal>Fechar</button>');
+      return;
+    }
+    if(action==='data'){
+      openModal('Dados e backup','',`<div class="info-stack"><p>Seus dados ainda ficam armazenados somente neste navegador enquanto validamos o protótipo.</p><button class="btn btn-secondary" id="resetData">Restaurar dados de demonstração</button></div>`,'<button class="btn btn-primary" data-close-modal>Fechar</button>');
+      return;
+    }
+    if(action==='preferences'){
+      openModal('Preferências','',`<div class="info-stack"><p>As preferências pessoais serão ampliadas quando conectarmos a conta e o Firebase.</p></div>`,'<button class="btn btn-primary" data-close-modal>Fechar</button>');
+      return;
+    }
+    openModal('Sobre o Sobra','',`<div class="about-sobra"><div class="brand-mark large">S</div><strong>Sobra</strong><p>Organize o que entrou, o que saiu e saiba quanto vai sobrar.</p><span>Versão ${SOBRA_VERSION}</span></div>`,'<button class="btn btn-primary" data-close-modal>Fechar</button>');
   }
 
   function render(){
@@ -335,20 +435,36 @@
   }
   function openEntryModal(type='expense'){
     state.entryType=type;
-    openModal('Novo lançamento','Adicione uma receita ou despesa ao mês.',
-      `<div class="form-grid">
-        <div class="segmented"><button data-entry-type="expense" class="${type==='expense'?'active':''}">Despesa</button><button data-entry-type="income" class="${type==='income'?'active':''}">Receita</button></div>
+    openModal('Novo lançamento','',
+      `<div class="form-grid quick-entry-form">
+        <div class="segmented"><button data-entry-type="expense" class="${type==='expense'?'active':''}">Saída</button><button data-entry-type="income" class="${type==='income'?'active':''}">Entrada</button></div>
+
+        <div class="entry-amount-field">
+          <label>Valor</label>
+          <div class="entry-amount-input"><span>R$</span><input id="entryAmount" inputmode="decimal" placeholder="0,00" autocomplete="off"></div>
+        </div>
+
         <div class="field"><label>Descrição</label><input class="input" id="entryDescription" placeholder="Ex.: Internet" autocomplete="off"></div>
-        <div class="field-row"><div class="field"><label>Valor</label><input class="input" id="entryAmount" inputmode="decimal" placeholder="0,00"></div><div class="field"><label>Data</label><input class="input" id="entryDate" type="date" value="${entryDate()}"></div></div>
-        <div class="field-row"><div class="field"><label>Categoria</label><select class="select" id="entryCategory">${['Casa','Alimentação','Transporte','Saúde','Educação','Assinaturas','Lazer','Compras','Contas','Outros','Receitas'].map(c=>`<option>${c}</option>`).join('')}</select></div><div class="field"><label>Tipo</label><select class="select" id="entryMode"><option value="single">Único</option><option value="recurring">Recorrente</option><option value="installment">Parcelado</option></select></div></div>
-        <div class="field"><label>Status</label><select class="select" id="entryStatus"></select></div>
-        <div id="installmentFields"></div>
-        <div class="field"><label>Observações</label><textarea class="textarea" id="entryNotes" placeholder="Opcional"></textarea></div>
-        <p class="helper">Protótipo local: nada é enviado para a internet nesta fase.</p>
+        <div class="field"><label>Data</label><input class="input" id="entryDate" type="date" value="${entryDate()}"></div>
+
+        <details class="advanced-options">
+          <summary>Mais opções <span>Categoria, recorrência e status</span></summary>
+          <div class="advanced-options-body">
+            <div class="field-row">
+              <div class="field"><label>Categoria</label><select class="select" id="entryCategory">${['Casa','Alimentação','Transporte','Saúde','Educação','Assinaturas','Lazer','Compras','Contas','Outros','Receitas'].map(c=>`<option>${c}</option>`).join('')}</select></div>
+              <div class="field"><label>Tipo</label><select class="select" id="entryMode"><option value="single">Único</option><option value="recurring">Recorrente</option><option value="installment">Parcelado</option></select></div>
+            </div>
+            <div class="field"><label>Status</label><select class="select" id="entryStatus"></select></div>
+            <div id="installmentFields"></div>
+            <div class="field"><label>Observações</label><textarea class="textarea" id="entryNotes" placeholder="Opcional"></textarea></div>
+          </div>
+        </details>
       </div>`,
-      '<button class="btn btn-secondary" data-close-modal>Cancelar</button><button class="btn btn-primary" id="saveEntry">Salvar lançamento</button>');
+      '<button class="btn btn-secondary" data-close-modal>Cancelar</button><button class="btn btn-primary" id="saveEntry">Salvar</button>');
     updateEntryFields();
+    setTimeout(()=>document.getElementById('entryAmount')?.focus(),80);
   }
+
   function updateEntryFields(){
     const status=document.getElementById('entryStatus');
     const category=document.getElementById('entryCategory');
@@ -423,15 +539,19 @@
     const el=document.createElement('div');el.className='toast';el.textContent=message;root.appendChild(el);
     setTimeout(()=>el.remove(),2600);
   }
+  function setThemeIcon(){
+    const el=document.getElementById('themeIcon');
+    if(el)el.innerHTML=icon(document.body.classList.contains('dark')?'sun':'moon',19);
+  }
   function toggleTheme(){
     document.body.classList.toggle('dark');
     const dark=document.body.classList.contains('dark');
     localStorage.setItem(THEME_KEY,dark?'dark':'light');
-    document.getElementById('themeIcon').textContent=dark?'☀':'☾';
+    setThemeIcon();
   }
   function restoreTheme(){
     if(localStorage.getItem(THEME_KEY)==='dark')document.body.classList.add('dark');
-    document.getElementById('themeIcon').textContent=document.body.classList.contains('dark')?'☀':'☾';
+    setThemeIcon();
   }
   function resetData(){
     localStorage.removeItem(STORAGE_KEY);
@@ -445,6 +565,9 @@
     const nav=e.target.closest('[data-nav]');if(nav){navigate(nav.dataset.nav);return}
     const month=e.target.closest('[data-month]');if(month){changeMonth(Number(month.dataset.month));return}
     const filter=e.target.closest('[data-filter]');if(filter){state.filter=filter.dataset.filter;render();return}
+    if(e.target.closest('[data-open-filters]')){openTransactionFilters();return}
+    if(e.target.closest('[data-apply-filters]')){applyTransactionFilters();return}
+    if(e.target.closest('[data-clear-filters]')){clearTransactionFilters();return}
     const calendarDay=e.target.closest('[data-calendar-date]');if(calendarDay){state.calendarDate=calendarDay.dataset.calendarDate;render();return}
     const tx=e.target.closest('[data-open-tx]');if(tx){openTransaction(tx.dataset.openTx);return}
     if(e.target.closest('#newEntryBtn')){openEntryModal('expense');return}
@@ -458,8 +581,10 @@
     const dup=e.target.closest('[data-duplicate-tx]');if(dup){duplicateTx(dup.dataset.duplicateTx);return}
     if(e.target.closest('[data-apply-update]')){applyReleaseUpdate();return}
     if(e.target.closest('[data-dismiss-update]')){dismissReleaseUpdate();return}
-    if(e.target.closest('#themeToggle')||e.target.closest('#themeMenu')){toggleTheme();return}
-    if(e.target.closest('#resetData')){resetData();return}
+    const moreAction=e.target.closest('[data-more-action]');if(moreAction){openMoreAction(moreAction.dataset.moreAction);return}
+    if(e.target.closest('[data-toggle-theme]')){toggleTheme();closeModal();openMoreAction('appearance');return}
+    if(e.target.closest('#themeToggle')){toggleTheme();return}
+    if(e.target.closest('#resetData')){resetData();closeModal();return}
   });
   document.addEventListener('input',e=>{
     if(e.target.id==='searchInput'){state.search=e.target.value;const list=document.querySelector('.transaction-list');if(list){const txs=filteredTransactions();list.innerHTML=txs.length?txs.map(txItem).join(''):'<div class="empty-state"><strong>Nenhum lançamento</strong>Tente outro termo.</div>'}}
