@@ -93,19 +93,40 @@
     const d=new Date(y,m-2,1);
     return `${d.getFullYear()}-${pad(d.getMonth()+1)}`;
   }
+  function effectiveRecurring(t,key){
+    const base={
+      description:t.description,
+      amount:t.amount,
+      category:t.category,
+      valueKind:t.valueKind||'fixed',
+      day:Number(String(t.dueDate).slice(8,10))||1
+    };
+    const changes=Array.isArray(t.recurrenceChanges)?t.recurrenceChanges:[];
+    for(const change of changes.slice().sort((a,b)=>String(a.from).localeCompare(String(b.from)))){
+      if(compareMonthKeys(change.from,key)<=0)Object.assign(base,change);
+    }
+    return base;
+  }
+  function recurringMasterView(t,key=currentKey()){
+    const effective=effectiveRecurring(t,key);
+    const [y,m]=key.split('-').map(Number);
+    const day=Math.min(Number(effective.day||1),new Date(y,m,0).getDate());
+    return {...t,...effective,id:t.id,dueDate:`${key}-${pad(day)}`,date:`${key}-${pad(day)}`};
+  }
+
   function projectedRecurring(t,key){
     const start=t.recurrenceStart||monthKeyFromDate(t.dueDate);
     const end=t.recurrenceEnd||null;
     if(compareMonthKeys(key,start)<0||(end&&compareMonthKeys(key,end)>0))return null;
     const override=state.overrides[occurrenceOverrideKey(t.id,key)]||{};
     if(override.skipped)return null;
+    const effective=effectiveRecurring(t,key);
     const [y,m]=key.split('-').map(Number);
-    const sourceDay=Number(String(t.dueDate).slice(8,10))||1;
-    const day=Math.min(sourceDay,new Date(y,m,0).getDate());
+    const day=Math.min(Number(effective.day||1),new Date(y,m,0).getDate());
     const dueDate=`${key}-${pad(day)}`;
     const sourceKey=monthKeyFromDate(t.dueDate);
     const defaultStatus=key===sourceKey?t.status:(t.type==='expense'?'launched':'expected');
-    return {...t,...override,id:`${t.id}@${key}`,dueDate,date:dueDate,status:override.status||defaultStatus,_sourceId:t.id,_occurrenceKey:key};
+    return {...t,...effective,...override,id:`${t.id}@${key}`,dueDate,date:dueDate,status:override.status||defaultStatus,_sourceId:t.id,_occurrenceKey:key};
   }
   function monthDistance(fromKey,toKey){
     const [fy,fm]=fromKey.split('-').map(Number);
@@ -301,6 +322,7 @@
     const recurring=state.transactions
       .filter(t=>t.type===state.accountsTab&&t.mode==='recurring')
       .filter(t=>!t.recurrenceEnd||compareMonthKeys(t.recurrenceEnd,key)>=0)
+      .map(t=>recurringMasterView(t,key))
       .sort((a,b)=>Number(String(a.dueDate).slice(8,10))-Number(String(b.dueDate).slice(8,10)));
     const installments=currentRows.filter(t=>t.mode==='installment').sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
     const monthly=currentRows.filter(t=>t.mode==='single').sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
@@ -323,11 +345,12 @@
   }
 
   function openMaster(id){
-    const t=state.transactions.find(x=>x.id===id&&x.mode==='recurring');if(!t)return;
+    const base=state.transactions.find(x=>x.id===id&&x.mode==='recurring');if(!base)return;
+    const t=recurringMasterView(base,currentKey());
     const day=Number(String(t.dueDate).slice(8,10))||1;
     openModal(
       `Editar ${t.type==='expense'?'conta recorrente':'provento recorrente'}`,
-      '',
+      'As alterações valem deste mês em diante.',
       `<div class="form-grid">
         <div class="field"><label>Nome</label><input class="input" id="masterDescription" value="${escapeAttr(t.description)}"></div>
         <div class="field-row">
@@ -354,15 +377,18 @@
     const day=Math.max(1,Math.min(31,Number(document.getElementById('masterDay')?.value||1)));
     if(!description||amount<=0){showToast('Preencha nome e valor.');return}
     const start=t.recurrenceStart||monthKeyFromDate(t.dueDate);
-    const [y,m]=start.split('-').map(Number);
-    const realDay=Math.min(day,new Date(y,m,0).getDate());
-    t.description=description;
-    t.amount=amount;
-    t.dueDate=`${start}-${pad(realDay)}`;
-    t.date=t.dueDate;
-    t.category=document.getElementById('masterCategory')?.value||t.category;
-    t.valueKind=document.getElementById('masterValueKind')?.value||'fixed';
-    persist();closeModal();render();showToast('Cadastro atualizado.');
+    const from=compareMonthKeys(currentKey(),start)<0?start:currentKey();
+    const change={
+      from,
+      description,
+      amount,
+      day,
+      category:document.getElementById('masterCategory')?.value||t.category,
+      valueKind:document.getElementById('masterValueKind')?.value||'fixed'
+    };
+    const changes=Array.isArray(t.recurrenceChanges)?t.recurrenceChanges:[];
+    t.recurrenceChanges=[...changes.filter(c=>c.from!==from),change].sort((a,b)=>a.from.localeCompare(b.from));
+    persist();closeModal();render();showToast('Cadastro atualizado deste mês em diante.');
   }
 
   function endMaster(id){
@@ -407,7 +433,7 @@
     const selectedLabel=selectedDate.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'});
     const selectedList=selectedTxs.length
       ? selectedTxs.map(txItem).join('')
-      : '<div class="empty-state compact"><strong>Nenhum lançamento</strong>Não há movimentações neste dia.</div>';
+      : '<div class="empty-state compact"><strong>Nenhuma movimentação</strong>Não há contas ou proventos neste dia.</div>';
 
     return `<section class="page">
       ${monthSwitcher()}
@@ -573,9 +599,10 @@
     });
   }
   function entryDate(){
-    const y=state.selectedMonth.getFullYear(),m=state.selectedMonth.getMonth();
-    const today=(now.getFullYear()===y&&now.getMonth()===m)?Math.min(now.getDate(),28):10;
-    return iso(y,m,today);
+    const [y,m]=entryMonthKey().split('-').map(Number);
+    const monthIndex=m-1;
+    const today=(now.getFullYear()===y&&now.getMonth()===monthIndex)?Math.min(now.getDate(),28):10;
+    return iso(y,monthIndex,today);
   }
   function openAddChoice(){
     openModal('Adicionar','Cadastre algo novo na sua vida financeira.',
@@ -709,7 +736,7 @@
   function openTransaction(id){
     const t=viewTransaction(id);if(!t)return;
     openModal(escapeHtml(t.description),txMeta(t),
-      `<div class="detail-total"><small>${t.type==='income'?'Valor da receita':'Valor do lançamento'}</small><strong>${money.format(t.amount)}</strong></div>
+      `<div class="detail-total"><small>${t.type==='income'?'Valor do provento':'Valor da conta'}</small><strong>${money.format(t.amount)}</strong></div>
       <div class="detail-grid">
         <div class="detail-card"><small>Status</small><strong>${labelStatus(t)}</strong></div>
         <div class="detail-card"><small>Categoria</small><strong>${escapeHtml(t.category)}</strong></div>
