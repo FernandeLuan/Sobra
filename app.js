@@ -2,7 +2,7 @@
   const STORAGE_KEY='sobra.transactions.v1';
   const OVERRIDES_KEY='sobra.occurrences.v1';
   const THEME_KEY='sobra.theme.v1';
-  const SOBRA_VERSION='0.7.0';
+  const SOBRA_VERSION='0.7.1';
   const SOBRA_RELEASE_ID=document.querySelector('meta[name="sobra-release"]')?.content||'development';
   const RELEASE_CHECK_MS=120000;
   const RELEASE_MIN_CHECK_MS=20000;
@@ -52,25 +52,40 @@
   function seedTransactions(){
     const y=initialMonth.getFullYear(),m=initialMonth.getMonth();
     return [
-      {id:uid(),type:'income',description:'Salário',amount:5400,category:'Receitas',dueDate:iso(y,m,5),status:'received',mode:'recurring'},
-      {id:uid(),type:'income',description:'Adiantamento',amount:1400,category:'Receitas',dueDate:iso(y,m,15),status:'received',mode:'recurring'},
-      {id:uid(),type:'expense',description:'Aluguel',amount:1600,category:'Casa',dueDate:iso(y,m,8),status:'paid',mode:'recurring'},
-      {id:uid(),type:'expense',description:'Mercado',amount:1150,category:'Alimentação',dueDate:iso(y,m,9),status:'paid',mode:'single'},
-      {id:uid(),type:'expense',description:'Internet',amount:153,category:'Contas',dueDate:iso(y,m,10),status:'paid',mode:'recurring'},
-      {id:uid(),type:'expense',description:'Energia',amount:240,category:'Contas',dueDate:iso(y,m,18),status:'scheduled',mode:'recurring'},
-      {id:uid(),type:'expense',description:'Academia',amount:119.90,category:'Saúde',dueDate:iso(y,m,12),status:'paid',mode:'recurring'},
-      {id:uid(),type:'expense',description:'Cartão',amount:2175.20,category:'Compras',dueDate:iso(y,m,25),status:'launched',mode:'single'},
-      {id:uid(),type:'expense',description:'Celular',amount:300,category:'Compras',dueDate:iso(y,m,20),status:'paid',mode:'installment',installmentNumber:3,installmentTotal:12},
-      {id:uid(),type:'expense',description:'Transporte',amount:500,category:'Transporte',dueDate:iso(y,m,22),status:'scheduled',mode:'single'},
-      {id:uid(),type:'expense',description:'Seguro',amount:166,category:'Contas',dueDate:iso(y,m,14),status:'paid',mode:'recurring'},
-      {id:uid(),type:'expense',description:'Assinaturas',amount:200,category:'Assinaturas',dueDate:iso(y,m,28),status:'scheduled',mode:'recurring'}
+      {id:uid(),type:'income',description:'Salário Luan',amount:4000,category:'Receitas',dueDate:iso(y,m,5),status:'received',mode:'recurring',recurrenceStart:selectedKey(),valueKind:'fixed'},
+      {id:uid(),type:'income',description:'Salário Mozi',amount:1200,category:'Receitas',dueDate:iso(y,m,5),status:'received',mode:'recurring',recurrenceStart:selectedKey(),valueKind:'fixed'},
+      {id:uid(),type:'income',description:'Rescisão Mozi',amount:8000,category:'Receitas',dueDate:iso(y,m,10),status:'received',mode:'single'},
+
+      {id:uid(),type:'expense',description:'Internet',amount:100,category:'Casa',dueDate:iso(y,m,10),status:'launched',mode:'recurring',recurrenceStart:selectedKey(),valueKind:'fixed'},
+      {id:uid(),type:'expense',description:'Luz',amount:250,category:'Casa',dueDate:iso(y,m,15),status:'launched',mode:'recurring',recurrenceStart:selectedKey(),valueKind:'variable'},
+      {id:uid(),type:'expense',description:'Água',amount:100,category:'Casa',dueDate:iso(y,m,15),status:'launched',mode:'recurring',recurrenceStart:selectedKey(),valueKind:'variable'},
+      {id:uid(),type:'expense',description:'Ailos Cons.',amount:833,category:'Financeiro',dueDate:iso(y,m,5),status:'launched',mode:'recurring',recurrenceStart:selectedKey(),valueKind:'fixed'},
+      {id:uid(),type:'expense',description:'Ailos Cartão',amount:700,category:'Cartão',dueDate:iso(y,m,10),status:'launched',mode:'recurring',recurrenceStart:selectedKey(),valueKind:'variable'},
+      {id:uid(),type:'expense',description:'Ailos Cotas',amount:50,category:'Investimentos',dueDate:iso(y,m,10),status:'launched',mode:'recurring',recurrenceStart:selectedKey(),valueKind:'fixed'},
+      {id:uid(),type:'expense',description:'Seg. Vida',amount:50,category:'Seguro',dueDate:iso(y,m,10),status:'launched',mode:'recurring',recurrenceStart:selectedKey(),valueKind:'fixed'},
+      {id:uid(),type:'expense',description:'Gasolina',amount:300,category:'Transporte',dueDate:iso(y,m,20),status:'launched',mode:'recurring',recurrenceStart:selectedKey(),valueKind:'variable'},
+      {id:uid(),type:'expense',description:'Internet Mov.',amount:60,category:'Assinaturas',dueDate:iso(y,m,10),status:'launched',mode:'recurring',recurrenceStart:selectedKey(),valueKind:'fixed'},
+      {id:uid(),type:'expense',description:'Seg. Carro',amount:80,category:'Seguro',dueDate:iso(y,m,10),status:'launched',mode:'recurring',recurrenceStart:selectedKey(),valueKind:'fixed'},
+      {id:uid(),type:'expense',description:'Seg. Moto',amount:90,category:'Seguro',dueDate:iso(y,m,10),status:'launched',mode:'recurring',recurrenceStart:selectedKey(),valueKind:'fixed'},
+      {id:uid(),type:'expense',description:'Moto',amount:297,category:'Financeiro',dueDate:iso(y,m,15),status:'launched',mode:'recurring',recurrenceStart:selectedKey(),valueKind:'fixed'},
+      {id:uid(),type:'expense',description:'Carro',amount:1354,category:'Financeiro',dueDate:iso(y,m,15),status:'launched',mode:'recurring',recurrenceStart:selectedKey(),valueKind:'fixed'},
+      {id:uid(),type:'expense',description:'Faculdade',amount:180,category:'Faculdade',dueDate:iso(y,m,10),status:'launched',mode:'recurring',recurrenceStart:selectedKey(),valueKind:'fixed'},
+      {id:uid(),type:'expense',description:'Aplic. Prog.',amount:400,category:'Investimentos',dueDate:iso(y,m,5),status:'launched',mode:'recurring',recurrenceStart:selectedKey(),valueKind:'fixed'},
+      {id:uid(),type:'expense',description:'Mercado Pago',amount:800,category:'Cartão',dueDate:iso(y,m,10),status:'launched',mode:'recurring',recurrenceStart:selectedKey(),valueKind:'variable'}
     ];
+  }
+
+  function isLegacyDemo(saved){
+    if(!Array.isArray(saved)||saved.length!==12)return false;
+    const names=new Set(saved.map(t=>t.description));
+    return ['Salário','Adiantamento','Aluguel','Mercado','Internet','Energia','Academia','Cartão','Celular','Transporte','Seguro','Assinaturas'].every(name=>names.has(name));
   }
 
   function loadTransactions(){
     try{
       const saved=JSON.parse(localStorage.getItem(STORAGE_KEY)||'null');
-      return Array.isArray(saved)&&saved.length?saved:seedTransactions();
+      if(Array.isArray(saved)&&saved.length&&!isLegacyDemo(saved))return saved;
+      return seedTransactions();
     }catch{return seedTransactions()}
   }
   function loadOverrides(){
@@ -390,7 +405,7 @@
           <option value="variable" ${t.valueKind==='variable'?'selected':''}>Estimado / variável</option>
         </select></div>
         <div class="field"><label>Categoria</label><select class="select" id="masterCategory">
-          ${['Casa','Alimentação','Transporte','Saúde','Educação','Assinaturas','Lazer','Compras','Contas','Outros','Receitas'].map(c=>`<option ${t.category===c?'selected':''}>${c}</option>`).join('')}
+          ${['Casa','Alimentação','Transporte','Saúde','Educação','Faculdade','Assinaturas','Cartão','Financeiro','Investimentos','Seguro','Lazer','Compras','Contas','Outros','Receitas'].map(c=>`<option ${t.category===c?'selected':''}>${c}</option>`).join('')}
         </select></div>
         <button class="danger-link" data-end-master="${t.id}">Encerrar depois deste mês</button>
       </div>`,
@@ -681,7 +696,7 @@
         <details class="advanced-options">
           <summary>Mais opções <span>Categoria, tipo de valor, status e observações</span></summary>
           <div class="advanced-options-body">
-            <div class="field"><label>Categoria</label><select class="select" id="entryCategory">${['Casa','Alimentação','Transporte','Saúde','Educação','Assinaturas','Lazer','Compras','Contas','Outros','Receitas'].map(c=>`<option>${c}</option>`).join('')}</select></div>
+            <div class="field"><label>Categoria</label><select class="select" id="entryCategory">${['Casa','Alimentação','Transporte','Saúde','Educação','Faculdade','Assinaturas','Cartão','Financeiro','Investimentos','Seguro','Lazer','Compras','Contas','Outros','Receitas'].map(c=>`<option>${c}</option>`).join('')}</select></div>
             <div class="field" id="valueKindField"><label>Tipo de valor</label><select class="select" id="entryValueKind"><option value="fixed">Fixo</option><option value="variable">Estimado / variável</option></select></div>
             <div class="field" id="statusField"><label>Status deste mês</label><select class="select" id="entryStatus"></select></div>
             <div id="installmentFields"></div>
