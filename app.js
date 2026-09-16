@@ -4,7 +4,7 @@
   const DEMO_DATA_KEY='sobra.demoDataVersion';
   const DEMO_DATA_VERSION='spreadsheet-20260916-v2';
   const THEME_KEY='sobra.theme.v1';
-  const SOBRA_VERSION='0.9.0';
+  const SOBRA_VERSION='1.0.0';
   const SOBRA_RELEASE_ID=document.querySelector('meta[name="sobra-release"]')?.content||'development';
   const RELEASE_CHECK_MS=120000;
   const RELEASE_MIN_CHECK_MS=20000;
@@ -37,7 +37,9 @@
       check:'<circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/>',
       wallet:'<path d="M4 7h14a2 2 0 0 1 2 2v9H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h11v3"/><path d="M16 11h4v4h-4a2 2 0 1 1 0-4Z"/>',
       plus:'<path d="M12 5v14M5 12h14"/>',
-      calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/>'
+      calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/>',
+      user:'<circle cx="12" cy="8" r="4"/><path d="M4.5 21a7.5 7.5 0 0 1 15 0"/>',
+      gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21h-4v-.09A1.7 1.7 0 0 0 8 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 3.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H2v-4h.09A1.7 1.7 0 0 0 3.6 8a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 8 3.6a1.7 1.7 0 0 0 1-.6A1.7 1.7 0 0 0 9.4 1.9V2h4v.09A1.7 1.7 0 0 0 15 3.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 8c.16.38.37.72.66 1 .3.28.68.43 1.1.4H21v4h-.09A1.7 1.7 0 0 0 19.4 15Z"/>'
     };
     return `<svg class="app-icon" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name]||''}</svg>`;
   }
@@ -279,7 +281,11 @@
     return `<div class="month-switcher"><button data-month="-1" aria-label="Mês anterior">‹</button><div class="month-label">${monthFmt.format(state.selectedMonth)}</div><button data-month="1" aria-label="Próximo mês">›</button></div>`;
   }
   function homeMonthSelector(){
-    return `<div class="balance-month"><button data-month="-1" aria-label="Mês anterior">‹</button><strong>${monthFmt.format(state.selectedMonth)}</strong><button data-month="1" aria-label="Próximo mês">›</button></div>`;
+    return `<div class="home-period">
+      <button data-month="-1" aria-label="Mês anterior">‹</button>
+      <strong>${monthFmt.format(state.selectedMonth)}</strong>
+      <button data-month="1" aria-label="Próximo mês">›</button>
+    </div>`;
   }
   function dueContextLabel(t){
     const date=new Date(`${t.dueDate}T12:00:00`);
@@ -322,46 +328,57 @@
     const txs=state.homeStatusFilter==='all'?allTxs:allTxs.filter(t=>t.status===state.homeStatusFilter);
     const filterLabels={all:'Todas',launched:'Lançadas',scheduled:'Agendadas',paid:'Pagas'};
     return `<section class="page home-page">
-      <div class="home-kicker"><span>Visão geral do mês</span></div>
+      <header class="home-head">
+        <div class="home-greeting">
+          <h1>Olá 👋</h1>
+          ${homeMonthSelector()}
+        </div>
+        <button class="home-theme" id="themeToggle" aria-label="Alternar tema"><span id="themeIcon"></span></button>
+      </header>
 
-      <div class="balance-card">
-        ${homeMonthSelector()}
-        <div class="balance-main">
-          <p class="balance-label">Disponível depois das contas</p>
-          <h2 class="balance-value">${money.format(s.sobra)}</h2>
+      <section class="hero-card">
+        <div class="hero-copy">
+          <small>Disponível este mês</small>
+          <strong>${money.format(s.sobra)}</strong>
         </div>
-        <div class="balance-row">
-          <div class="balance-mini income"><span class="balance-mini-icon">${icon('arrowUp',17)}</span><div><small>Entradas</small><strong>${money.format(s.revenue)}</strong></div></div>
-          <div class="balance-mini expense"><span class="balance-mini-icon">${icon('arrowDown',17)}</span><div><small>Contas</small><strong>${money.format(s.expensesTotal)}</strong></div></div>
+        <div class="hero-money-row">
+          <div class="hero-money income">
+            <span>Entradas</span>
+            <strong>${money.format(s.revenue)}</strong>
+          </div>
+          <div class="hero-money expense">
+            <span>Contas</span>
+            <strong>${money.format(s.expensesTotal)}</strong>
+          </div>
         </div>
-        <div class="balance-commitment">
-          <div class="balance-progress"><span style="width:${s.percentage}%"></span></div>
-          <div class="balance-commitment-copy"><span>${s.percentage.toFixed(0)}% da renda comprometida</span></div>
-        </div>
-      </div>
-
-      <section class="content-section payment-status-section">
-        <div class="section-head"><div><h2>Pagamento das contas</h2><small>Toque para filtrar</small></div><span></span></div>
-        <div class="payment-status-grid" id="homeStatusGrid">
-          <button class="payment-status-card launched ${state.homeStatusFilter==='launched'?'active':''}" data-home-status="launched" aria-pressed="${state.homeStatusFilter==='launched'}">
-            <span class="payment-status-icon">${icon('receipt',18)}</span><small>Lançadas</small><strong>${money.format(s.launched)}</strong>
-          </button>
-          <button class="payment-status-card scheduled ${state.homeStatusFilter==='scheduled'?'active':''}" data-home-status="scheduled" aria-pressed="${state.homeStatusFilter==='scheduled'}">
-            <span class="payment-status-icon">${icon('clock',18)}</span><small>Agendadas</small><strong>${money.format(s.scheduled)}</strong>
-          </button>
-          <button class="payment-status-card paid ${state.homeStatusFilter==='paid'?'active':''}" data-home-status="paid" aria-pressed="${state.homeStatusFilter==='paid'}">
-            <span class="payment-status-icon">${icon('check',18)}</span><small>Pagas</small><strong>${money.format(s.paid)}</strong>
-          </button>
-        </div>
-        <button class="clear-home-filter" id="clearHomeFilter" data-home-status="all" ${state.homeStatusFilter==='all'?'hidden':''}>Mostrar todas</button>
+        <div class="hero-progress"><span style="width:${s.percentage}%"></span></div>
+        <div class="hero-progress-copy"><span>${s.percentage.toFixed(0)}% da renda comprometida</span></div>
       </section>
 
-      <section class="content-section month-control-section">
-        <div class="section-head">
+      <section class="status-strip">
+        <button class="status-tile launched ${state.homeStatusFilter==='launched'?'active':''}" data-home-status="launched" aria-pressed="${state.homeStatusFilter==='launched'}">
+          <span class="status-tile-icon">${icon('receipt',18)}</span>
+          <span>Lançadas</span>
+          <strong>${money.format(s.launched)}</strong>
+        </button>
+        <button class="status-tile scheduled ${state.homeStatusFilter==='scheduled'?'active':''}" data-home-status="scheduled" aria-pressed="${state.homeStatusFilter==='scheduled'}">
+          <span class="status-tile-icon">${icon('clock',18)}</span>
+          <span>Agendadas</span>
+          <strong>${money.format(s.scheduled)}</strong>
+        </button>
+        <button class="status-tile paid ${state.homeStatusFilter==='paid'?'active':''}" data-home-status="paid" aria-pressed="${state.homeStatusFilter==='paid'}">
+          <span class="status-tile-icon">${icon('check',18)}</span>
+          <span>Pagas</span>
+          <strong>${money.format(s.paid)}</strong>
+        </button>
+      </section>
+
+      <section class="home-list-section">
+        <div class="home-section-head">
           <div><h2>Contas do mês</h2><small id="homeFilterLabel">${filterLabels[state.homeStatusFilter]}</small></div>
-          <span></span>
+          <button id="clearHomeFilter" data-home-status="all" ${state.homeStatusFilter==='all'?'hidden':''}>Ver todas</button>
         </div>
-        <div class="list-surface month-control-list" id="homeMonthList">${txs.length?txs.map(monthControlItem).join(''):`<div class="empty-state"><span class="empty-icon">${icon('check',24)}</span><strong>Nenhuma conta ${state.homeStatusFilter==='all'?'neste mês':filterLabels[state.homeStatusFilter].toLowerCase()}</strong><span>${state.homeStatusFilter==='all'?'Cadastre suas contas na aba Contas.':'Escolha outro status para ver as demais contas.'}</span></div>`}</div>
+        <div class="home-bills" id="homeMonthList">${txs.length?txs.map(monthControlItem).join(''):`<div class="empty-state"><span class="empty-icon">${icon('check',24)}</span><strong>Nenhuma conta ${state.homeStatusFilter==='all'?'neste mês':filterLabels[state.homeStatusFilter].toLowerCase()}</strong><span>${state.homeStatusFilter==='all'?'Cadastre suas contas na aba Contas.':'Escolha outro status para ver as demais contas.'}</span></div>`}</div>
       </section>
     </section>`;
   }
@@ -549,18 +566,25 @@
 
   function renderMore(){
     const groups=[
-      ['Organização',[
-        ['tag','Categorias','Organize suas contas e proventos','categories'],
-        ['sliders','Preferências','Comportamento do Sobra','preferences']
+      ['Configurações',[
+        ['tag','Categorias','Organize contas e proventos','categories'],
+        ['palette','Aparência','Tema e cores do aplicativo','appearance'],
+        ['sliders','Preferências','Comportamento do Sobra','preferences'],
+        ['data','Dados e backup','Dados salvos neste dispositivo','data']
       ]],
-      ['Aplicativo',[
-        ['palette','Aparência','Tema e preferências visuais','appearance'],
-        ['data','Dados e backup','Gerencie os dados do aplicativo','data'],
+      ['Sobre',[
         ['info','Sobre o Sobra',`Versão ${SOBRA_VERSION}`,'about']
       ]]
     ];
-    return `<section class="page more-page">
-      <header class="screen-head"><div><h1>Mais</h1><p>Preferências e dados do aplicativo</p></div></header>
+    return `<section class="page account-page">
+      <header class="screen-head simple"><div><h1>Conta</h1><p>Perfil e configurações</p></div></header>
+
+      <section class="profile-card">
+        <div class="profile-avatar">S</div>
+        <div class="profile-copy"><strong>Sobra</strong><small>Dados locais neste dispositivo</small></div>
+        <span class="profile-chip">Protótipo</span>
+      </section>
+
       ${groups.map(([title,rows])=>`<section class="settings-group">
         <h2>${title}</h2>
         <div class="settings-list">${rows.map(([ico,label,subtitle,action])=>`
@@ -624,6 +648,7 @@
     if(!app)return;
     app.innerHTML=state.page==='accounts'?renderAccounts():state.page==='calendar'?renderCalendar():state.page==='more'?renderMore():renderHome();
     document.querySelectorAll('.nav-item[data-nav]').forEach(b=>b.classList.toggle('active',b.dataset.nav===state.page));
+    setThemeIcon();
     window.scrollTo({top:0,behavior:'auto'});
   }
   function navigate(page){
