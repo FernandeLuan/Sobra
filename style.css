@@ -1047,3 +1047,50 @@ body{font-size:16px}
   .accounts-intro.permanent{display:block}
   .account-add-action{margin-top:10px;width:100%}
 }
+
+
+/* =========================================================
+   Sobra 0.7.0 — status cards as filters
+   ========================================================= */
+.payment-status-card{
+  appearance:none;-webkit-appearance:none;
+  width:100%;text-align:left;color:var(--text);
+  cursor:pointer;transition:border-color .16s ease,background .16s ease,transform .12s ease
+}
+.payment-status-card:active{transform:scale(.985)}
+.payment-status-card.active{
+  border-width:1px;
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--primary) 8%,transparent)
+}
+.payment-status-card.launched.active{
+  border-color:color-mix(in srgb,var(--primary) 48%,var(--border));
+  background:color-mix(in srgb,var(--primary) 5%,var(--surface))
+}
+.payment-status-card.scheduled.active{
+  border-color:color-mix(in srgb,var(--warning) 52%,var(--border));
+  background:color-mix(in srgb,var(--warning) 6%,var(--surface))
+}
+.payment-status-card.paid.active{
+  border-color:color-mix(in srgb,var(--positive) 48%,var(--border));
+  background:color-mix(in srgb,var(--positive) 5%,var(--surface))
+}
+.clear-home-filter{
+  margin:9px 2px 0;padding:4px 0;border:0;background:transparent;
+  color:var(--primary);font-size:.76rem;font-weight:800
+}
+.section-filter-label{
+  color:var(--muted);font-size:.74rem;font-weight:700
+}
+
+/* Keep row status informative but not tag-heavy */
+.month-control-side .status-text{
+  display:inline-flex;align-items:center;gap:5px;
+  margin-top:5px;padding:0;background:transparent!important;
+  border-radius:0;font-size:.69rem;font-weight:750
+}
+.status-text i{
+  width:6px;height:6px;border-radius:50%;display:block;background:currentColor
+}
+.status-text.launched{color:var(--primary)}
+.status-text.scheduled{color:var(--warning)}
+.status-text.paid{color:var(--positive)}
