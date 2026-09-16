@@ -369,3 +369,23 @@ body.dark .fab{border-color:var(--bg)}
   .calendar-cell{border-radius:9px}
   .calendar-number{font-size:.62rem}
 }
+
+
+/* Aviso de nova versão */
+.update-notice{text-align:center;padding:2px 2px 0}
+.update-notice-icon{
+  width:48px;height:48px;margin:2px auto 12px;border-radius:16px;
+  display:grid;place-items:center;background:var(--primary-soft);color:var(--primary);
+  font-size:1.35rem;font-weight:800
+}
+.update-notice p{margin:0;color:var(--muted);font-size:.64rem;line-height:1.5}
+.update-notice p+p{margin-top:6px}
+.update-notice p strong{color:var(--text);font-size:.72rem}
+.update-version-row{
+  display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:14px
+}
+.update-version-row span{
+  padding:9px;border:1px solid var(--border);border-radius:12px;background:var(--bg);
+  color:var(--muted);font-size:.52rem
+}
+.update-version-row strong{display:block;margin-top:3px;color:var(--text);font-size:.62rem}
