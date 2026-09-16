@@ -314,3 +314,58 @@ body.dark .fab{border-color:var(--bg)}
 @media(prefers-reduced-motion:reduce){
   *{animation:none!important;transition:none!important;scroll-behavior:auto!important}
 }
+
+/* Lançamentos: valor é o indicador principal, sem badges repetitivos */
+.tx-icon.income{background:color-mix(in srgb,var(--positive) 12%,transparent);color:var(--positive)}
+.tx-icon.expense{background:color-mix(in srgb,var(--danger) 10%,transparent);color:var(--danger)}
+.tx-value strong.income{color:var(--positive);font-weight:800}
+.tx-value strong.expense{color:var(--danger);font-weight:800}
+
+/* Calendário mensal real */
+.calendar-card{
+  margin-top:0;padding:11px 10px 9px;border:1px solid var(--border);border-radius:19px;
+  background:var(--surface);box-shadow:var(--shadow)
+}
+.calendar-weekdays,.calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
+.calendar-weekdays{padding:0 2px 5px;color:var(--muted)}
+.calendar-weekdays span{
+  display:grid;place-items:center;height:22px;font-size:.49rem;font-weight:800;
+  text-transform:uppercase
+}
+.calendar-grid{gap:2px}
+.calendar-cell{
+  position:relative;aspect-ratio:1/1;min-width:0;border:0;border-radius:11px;
+  background:transparent;color:var(--text);display:grid;place-items:center;
+  align-content:center;gap:3px;padding:2px
+}
+.calendar-cell.empty{pointer-events:none}
+.calendar-cell:not(.empty):active{background:var(--surface-2)}
+.calendar-cell.today:not(.selected){box-shadow:inset 0 0 0 1px var(--primary)}
+.calendar-cell.selected{background:var(--primary);color:#fff;box-shadow:0 6px 14px rgba(15,118,110,.2)}
+.calendar-number{font-size:.66rem;font-weight:700;line-height:1}
+.calendar-cell.selected .calendar-number{font-weight:800}
+.calendar-dots{height:5px;display:flex;align-items:center;justify-content:center;gap:3px}
+.calendar-dot{display:inline-block;width:4px;height:4px;border-radius:50%;background:var(--muted)}
+.calendar-dot.income{background:var(--positive)}
+.calendar-dot.expense{background:var(--danger)}
+.calendar-cell.selected .calendar-dot{box-shadow:0 0 0 1px rgba(255,255,255,.32)}
+.calendar-cell.selected .calendar-dot.income{background:#9ff1d0}
+.calendar-cell.selected .calendar-dot.expense{background:#ffc0c0}
+.calendar-legend{
+  display:flex;align-items:center;justify-content:flex-end;gap:10px;
+  margin-top:7px;padding:7px 3px 0;border-top:1px solid var(--border);
+  color:var(--muted);font-size:.5rem;font-weight:700
+}
+.calendar-legend span{display:flex;align-items:center;gap:4px}
+.calendar-legend .calendar-dot{width:5px;height:5px}
+.calendar-selected{margin-top:9px}
+.calendar-selected .section-head{margin-bottom:3px}
+.calendar-selected .section-head h2{text-transform:capitalize}
+.empty-state.compact{padding:18px 8px}
+
+@media(max-width:370px){
+  .calendar-card{padding-left:7px;padding-right:7px}
+  .calendar-grid{gap:1px}
+  .calendar-cell{border-radius:9px}
+  .calendar-number{font-size:.62rem}
+}
