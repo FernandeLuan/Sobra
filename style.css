@@ -687,3 +687,191 @@ body{font-size:16px}
   .filter-button span{display:none}
   .settings-row{grid-template-columns:38px minmax(0,1fr) 22px}
 }
+
+
+/* =========================================================
+   Sobra 0.4.0 — planning-first mobile architecture
+   ========================================================= */
+:root{
+  --positive:#1f9d55;
+  --danger:#d84c4c;
+  --radius-sm:10px;
+  --radius-md:14px;
+  --radius-lg:20px;
+  --shadow:0 8px 22px rgba(25,48,44,.055);
+}
+
+.topbar{
+  height:calc(54px + env(safe-area-inset-top));
+  padding-left:12px;padding-right:12px;
+}
+.brand-mark{width:32px;height:32px;border-radius:10px;box-shadow:none}
+.brand-copy strong{font-size:1rem}
+.main-content{padding-top:2px}
+
+/* Home: month becomes part of the answer card */
+.home-page{padding-top:5px}
+.balance-card{
+  padding:16px 18px 18px;
+  border-radius:var(--radius-lg);
+  box-shadow:0 12px 26px rgba(15,118,110,.14)
+}
+.balance-month{
+  position:relative;z-index:2;
+  display:grid;grid-template-columns:36px 1fr 36px;align-items:center;gap:6px;
+  margin-bottom:17px
+}
+.balance-month button{
+  width:36px;height:36px;border:1px solid rgba(255,255,255,.14);
+  border-radius:11px;background:rgba(255,255,255,.08);color:#fff;
+  font-size:1.15rem
+}
+.balance-month strong{
+  text-align:center;text-transform:capitalize;
+  font-size:.9rem;font-weight:750;color:rgba(255,255,255,.92)
+}
+.balance-main{text-align:left;position:relative;z-index:1}
+.balance-label{font-size:.82rem;opacity:.82}
+.balance-value{font-size:2.45rem;margin:5px 0 4px}
+.balance-caption{font-size:.78rem;opacity:.72}
+.balance-row{margin-top:16px}
+.balance-mini{border-radius:11px}
+.balance-commitment{margin-top:13px}
+
+/* One actionable month summary instead of three competing cards */
+.payment-focus{
+  position:relative;padding:16px;
+  border:1px solid var(--border);border-radius:var(--radius-md);
+  background:var(--surface)
+}
+.payment-focus-main{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.payment-focus-main span{color:var(--muted);font-size:var(--text-sm);font-weight:700}
+.payment-focus-main strong{font-size:1.35rem;letter-spacing:-.03em;color:var(--danger)}
+.payment-focus-meta{
+  display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;
+  color:var(--muted);font-size:var(--text-xs)
+}
+.payment-focus-meta span{display:flex;align-items:center;gap:6px}
+.payment-focus-meta .status-dot{width:7px;height:7px;margin:0}
+.status-dot.paid{background:var(--positive)}
+.status-dot.scheduled{background:var(--warning)}
+.text-action{
+  margin-top:13px;padding:0;border:0;background:transparent;color:var(--primary);
+  font-size:var(--text-sm);font-weight:800
+}
+
+/* Upcoming bills prioritize date and urgency */
+.upcoming-list{padding:0 12px}
+.upcoming-item{
+  width:100%;min-height:66px;padding:10px 0;border:0;border-bottom:1px solid var(--border);
+  background:transparent;color:var(--text);
+  display:grid;grid-template-columns:58px minmax(0,1fr) auto;gap:10px;align-items:center;text-align:left
+}
+.upcoming-item:last-child{border-bottom:0}
+.due-pill{
+  min-height:32px;padding:6px 7px;border-radius:9px;
+  display:grid;place-items:center;background:var(--surface-2);color:var(--muted);
+  font-size:.68rem;font-weight:800;text-align:center
+}
+.due-pill.overdue{background:color-mix(in srgb,var(--danger) 10%,transparent);color:var(--danger)}
+.upcoming-item .tx-title strong{font-size:var(--text-md)}
+.upcoming-item .tx-title small{font-size:var(--text-xs)}
+.upcoming-item .tx-value{min-width:95px}
+
+/* Accounts / Proventos */
+.accounts-page .month-switcher{margin-top:5px}
+.account-tabs{
+  display:grid;grid-template-columns:1fr 1fr;gap:4px;
+  padding:4px;margin-bottom:12px;border-radius:12px;background:var(--surface-2)
+}
+.account-tabs button{
+  min-height:42px;border:0;border-radius:9px;background:transparent;color:var(--muted);
+  font-size:var(--text-sm);font-weight:800
+}
+.account-tabs button.active{
+  background:var(--surface);color:var(--text);
+  box-shadow:0 2px 8px rgba(25,48,44,.05)
+}
+.accounts-intro{padding:2px 2px 5px}
+.accounts-intro strong{display:block;font-size:var(--text-lg)}
+.accounts-intro span{
+  display:block;margin-top:4px;color:var(--muted);
+  font-size:var(--text-sm);line-height:1.45
+}
+.account-group{margin-top:16px}
+.account-group .section-head{margin-bottom:8px}
+.account-list{padding:0 12px}
+.account-item{
+  width:100%;min-height:70px;padding:10px 0;border:0;border-bottom:1px solid var(--border);
+  background:transparent;color:var(--text);
+  display:grid;grid-template-columns:42px minmax(0,1fr) auto;gap:10px;align-items:center;text-align:left
+}
+.account-item:last-child{border-bottom:0}
+.account-icon{
+  width:42px;height:42px;border-radius:13px;display:grid;place-items:center
+}
+.account-icon.expense{background:color-mix(in srgb,var(--danger) 10%,transparent);color:var(--danger)}
+.account-icon.income{background:color-mix(in srgb,var(--positive) 11%,transparent);color:var(--positive)}
+.account-copy{min-width:0}
+.account-copy strong{
+  display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-size:var(--text-md)
+}
+.account-copy small{display:block;margin-top:4px;color:var(--muted);font-size:var(--text-xs)}
+.account-side{text-align:right;min-width:112px}
+.account-side strong{display:block;font-size:var(--text-md)}
+.account-side strong.expense{color:var(--danger)}
+.account-side strong.income{color:var(--positive)}
+.account-side small{display:block;margin-top:4px;color:var(--muted);font-size:.68rem}
+
+/* Add action chooser */
+.add-choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.add-choice{
+  min-height:150px;padding:18px 12px;border:1px solid var(--border);border-radius:14px;
+  background:var(--surface);color:var(--text);text-align:center
+}
+.add-choice-icon{
+  width:46px;height:46px;margin:0 auto 12px;border-radius:14px;display:grid;place-items:center
+}
+.add-choice.expense .add-choice-icon{background:color-mix(in srgb,var(--danger) 10%,transparent);color:var(--danger)}
+.add-choice.income .add-choice-icon{background:color-mix(in srgb,var(--positive) 11%,transparent);color:var(--positive)}
+.add-choice strong{display:block;font-size:var(--text-md)}
+.add-choice small{
+  display:block;margin-top:5px;color:var(--muted);font-size:var(--text-xs);line-height:1.4
+}
+
+/* Secondary surfaces less card-like */
+.list-surface,.settings-list,.calendar-card,.payment-focus{
+  box-shadow:none
+}
+.list-surface,.settings-list,.calendar-card{border-radius:var(--radius-md)}
+.calendar-selected .transaction-list{border-radius:var(--radius-md)}
+.modal{border-radius:20px}
+@media(max-width:640px){.modal{border-radius:20px 20px 0 0}}
+
+/* Softer primary action so the + does not compete with the monthly answer */
+.fab{
+  box-shadow:0 8px 18px rgba(15,118,110,.18);
+  background:var(--primary)
+}
+
+/* Month switcher outside home stays functional but quieter */
+.month-switcher button{
+  box-shadow:none;border-radius:11px;background:var(--surface)
+}
+
+/* Hide legacy visual blocks if any old DOM is still cached */
+.month-overview{display:none}
+
+/* Mobile refinements */
+@media(max-width:390px){
+  .balance-card{padding:15px 16px 17px}
+  .balance-value{font-size:2.2rem}
+  .payment-focus-main{align-items:flex-start;flex-direction:column;gap:4px}
+  .upcoming-item{grid-template-columns:54px minmax(0,1fr);gap:9px}
+  .upcoming-item .tx-value{grid-column:2;text-align:left;min-width:0;margin-top:-5px}
+  .account-item{grid-template-columns:40px minmax(0,1fr)}
+  .account-side{grid-column:2;text-align:left;min-width:0;margin-top:-4px}
+  .add-choice-grid{grid-template-columns:1fr}
+  .add-choice{min-height:112px}
+}
