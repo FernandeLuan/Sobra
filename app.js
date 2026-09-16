@@ -2,7 +2,7 @@
   const STORAGE_KEY='sobra.transactions.v1';
   const OVERRIDES_KEY='sobra.occurrences.v1';
   const THEME_KEY='sobra.theme.v1';
-  const SOBRA_VERSION='0.6.0';
+  const SOBRA_VERSION='0.7.0';
   const SOBRA_RELEASE_ID=document.querySelector('meta[name="sobra-release"]')?.content||'development';
   const RELEASE_CHECK_MS=120000;
   const RELEASE_MIN_CHECK_MS=20000;
@@ -40,6 +40,7 @@
   const state={
     page:'home',
     selectedMonth:initialMonth,
+    homeStatusFilter:'all',
     accountsTab:'expense',
     search:'',
     calendarDate:null,
@@ -247,14 +248,16 @@
       <span class="tx-title"><strong>${escapeHtml(t.description)}</strong><small>${escapeHtml(t.category)}</small></span>
       <span class="month-control-side">
         <strong>− ${money.format(t.amount)}</strong>
-        <small class="${tone}">${t.status==='paid'?'Paga':t.status==='scheduled'?'Agendada':'Lançada'}</small>
+        <small class="status-text ${tone}"><i></i>${t.status==='paid'?'Paga':t.status==='scheduled'?'Agendada':'Lançada'}</small>
       </span>
     </button>`;
   }
 
   function renderHome(){
     const s=getSummary();
-    const txs=monthTransactions().filter(t=>t.type==='expense').sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
+    const allTxs=monthTransactions().filter(t=>t.type==='expense').sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
+    const txs=state.homeStatusFilter==='all'?allTxs:allTxs.filter(t=>t.status===state.homeStatusFilter);
+    const filterLabels={all:'Todas',launched:'Lançadas',scheduled:'Agendadas',paid:'Pagas'};
     return `<section class="page home-page">
       <div class="balance-card">
         ${homeMonthSelector()}
@@ -279,21 +282,25 @@
       <section class="content-section payment-status-section">
         <div class="section-head"><h2>Pagamento das contas</h2><span></span></div>
         <div class="payment-status-grid">
-          <div class="payment-status-card launched">
+          <button class="payment-status-card launched ${state.homeStatusFilter==='launched'?'active':''}" data-home-status="launched" aria-pressed="${state.homeStatusFilter==='launched'}">
             <span class="status-dot"></span><small>Lançadas</small><strong>${money.format(s.launched)}</strong>
-          </div>
-          <div class="payment-status-card scheduled">
+          </button>
+          <button class="payment-status-card scheduled ${state.homeStatusFilter==='scheduled'?'active':''}" data-home-status="scheduled" aria-pressed="${state.homeStatusFilter==='scheduled'}">
             <span class="status-dot"></span><small>Agendadas</small><strong>${money.format(s.scheduled)}</strong>
-          </div>
-          <div class="payment-status-card paid">
+          </button>
+          <button class="payment-status-card paid ${state.homeStatusFilter==='paid'?'active':''}" data-home-status="paid" aria-pressed="${state.homeStatusFilter==='paid'}">
             <span class="status-dot"></span><small>Pagas</small><strong>${money.format(s.paid)}</strong>
-          </div>
+          </button>
         </div>
+        ${state.homeStatusFilter!=='all'?'<button class="clear-home-filter" data-home-status="all">Mostrar todas as contas</button>':''}
       </section>
 
       <section class="content-section month-control-section">
-        <div class="section-head"><h2>Contas do mês</h2><button data-nav="calendar">Calendário</button></div>
-        <div class="list-surface month-control-list">${txs.length?txs.map(monthControlItem).join(''):'<div class="empty-state"><strong>Nenhuma conta neste mês</strong>Cadastre suas contas na aba Contas.</div>'}</div>
+        <div class="section-head">
+          <h2>Contas do mês</h2>
+          <span class="section-filter-label">${filterLabels[state.homeStatusFilter]}</span>
+        </div>
+        <div class="list-surface month-control-list">${txs.length?txs.map(monthControlItem).join(''):`<div class="empty-state"><strong>Nenhuma conta ${state.homeStatusFilter==='all'?'neste mês':filterLabels[state.homeStatusFilter].toLowerCase()}</strong>${state.homeStatusFilter==='all'?'Cadastre suas contas na aba Contas.':'Toque em outro status para ver as demais contas.'}</div>`}</div>
       </section>
     </section>`;
   }
@@ -901,6 +908,11 @@
   document.addEventListener('click',e=>{
     const nav=e.target.closest('[data-nav]');if(nav){navigate(nav.dataset.nav);return}
     const month=e.target.closest('[data-month]');if(month){changeMonth(Number(month.dataset.month));return}
+    const homeStatus=e.target.closest('[data-home-status]');if(homeStatus){
+      const next=homeStatus.dataset.homeStatus;
+      state.homeStatusFilter=state.homeStatusFilter===next&&next!=='all'?'all':next;
+      render();return
+    }
     const accountTab=e.target.closest('[data-account-tab]');if(accountTab){state.accountsTab=accountTab.dataset.accountTab;render();return}
     const master=e.target.closest('[data-open-master]');if(master){openMaster(master.dataset.openMaster);return}
     const calendarDay=e.target.closest('[data-calendar-date]');if(calendarDay){state.calendarDate=calendarDay.dataset.calendarDate;render();return}
